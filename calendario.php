@@ -49,8 +49,10 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
     <title>AlugaTorres | Calendário</title>
     <link rel="stylesheet" href="style/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="website icon" type="png" href="style/img/Logo_AlugaTorres_branco.png">
 </head>
+
 
 <body>
     <?php include 'header.php'; ?>
@@ -189,7 +191,8 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                             <!-- Resumo da reserva será carregado aqui -->
                         </div>
 
-                        <button class="btn-reservar" id="btnReservar">Reservar Agora</button>
+                        <button type="button" class="btn-reservar" id="btnReservar">Reservar Agora</button>
+
                     </div>
                 <?php elseif ($tipo_utilizador === 'proprietario' && $casa_id): ?>
                     <div class="reservation-form">
@@ -205,7 +208,10 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
 
     <?php include 'footer.php'; ?>
 
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
     <script src="backend/script.js"></script>
+
     <script>
         // Configurações globais
         const currentDate = new Date();
@@ -290,26 +296,48 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     }
                 });
 
-                // Auto-format date inputs
+                // Máscara de data DD/MM/YYYY com formatação automática
                 function formatDateInput(input) {
-                    let value = input.value.replace(/\D/g, '');
-                    let formatted = '';
+                    let value = input.value.replace(/\D/g, ''); // Remove tudo que não é dígito
 
-                    if (value.length >= 1) {
-                        formatted = value.substring(0, 2);
-                        if (value.length >= 3) {
-                            formatted += '/' + value.substring(2, 4);
-                            if (value.length >= 5) {
-                                formatted += '/' + value.substring(4, 8);
-                            }
-                        }
+                    // Limita a 8 dígitos (DDMMYYYY)
+                    if (value.length > 8) {
+                        value = value.substring(0, 8);
                     }
 
+                    let formatted = '';
+
+                    // Adiciona dia (2 dígitos)
+                    if (value.length >= 1) {
+                        let day = value.substring(0, 2);
+                        // Validação básica do dia (máximo 31)
+                        if (day.length === 2 && parseInt(day) > 31) {
+                            day = '31';
+                        }
+                        formatted = day;
+                    }
+
+                    // Adiciona mês (2 dígitos) com barra
+                    if (value.length >= 3) {
+                        let month = value.substring(2, 4);
+                        // Validação básica do mês (máximo 12)
+                        if (month.length === 2 && parseInt(month) > 12) {
+                            month = '12';
+                        }
+                        formatted += '/' + month;
+                    }
+
+                    // Adiciona ano (4 dígitos) com barra
+                    if (value.length >= 5) {
+                        let year = value.substring(4, 8);
+                        formatted += '/' + year;
+                    }
+
+                    // Atualiza o valor do input
                     input.value = formatted;
-                    const cursorPos = formatted.length;
-                    input.setSelectionRange(cursorPos, cursorPos);
                 }
 
+                // Evento de input para formatação em tempo real
                 document.getElementById('checkinDate').addEventListener('input', function(e) {
                     formatDateInput(e.target);
                 });
@@ -318,11 +346,54 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     formatDateInput(e.target);
                 });
 
-                // Prevent backspace from removing slashes
+                // Validação ao sair do campo (blur)
+                document.getElementById('checkinDate').addEventListener('blur', function(e) {
+                    validateDate(e.target);
+                });
+
+                document.getElementById('checkoutDate').addEventListener('blur', function(e) {
+                    validateDate(e.target);
+                });
+
+                // Função de validação completa da data
+                function validateDate(input) {
+                    const value = input.value;
+                    const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+
+                    if (!value) return;
+
+                    if (!regex.test(value)) {
+                        input.style.borderColor = '#dc3545';
+                        return;
+                    }
+
+                    const match = value.match(regex);
+                    const day = parseInt(match[1], 10);
+                    const month = parseInt(match[2], 10);
+                    const year = parseInt(match[3], 10);
+
+                    // Validações
+                    if (month < 1 || month > 12) {
+                        input.style.borderColor = '#dc3545';
+                        return;
+                    }
+
+                    const daysInMonth = new Date(year, month, 0).getDate();
+                    if (day < 1 || day > daysInMonth) {
+                        input.style.borderColor = '#dc3545';
+                        return;
+                    }
+
+                    // Data válida - borda verde
+                    input.style.borderColor = '#28a745';
+                }
+
+                // Prevenir backspace em posições de barra
                 document.getElementById('checkinDate').addEventListener('keydown', function(e) {
                     if (e.key === 'Backspace') {
                         const value = e.target.value;
                         const cursorPos = e.target.selectionStart;
+                        // Se o cursor está logo após uma barra, pula a barra
                         if (cursorPos > 0 && value[cursorPos - 1] === '/') {
                             e.preventDefault();
                             e.target.setSelectionRange(cursorPos - 1, cursorPos - 1);
@@ -340,6 +411,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                         }
                     }
                 });
+
             }
 
             // Configurar datepickers para proprietário
@@ -426,11 +498,15 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 day.classList.add('other-month');
             }
 
-            // Verificar se é hoje
+            // Verificar se é hoje (comparar como strings YYYY-MM-DD para evitar problemas de timezone)
             const today = new Date();
-            if (date.toDateString() === today.toDateString()) {
+            const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+            const dateStrLocal = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+            if (todayStr === dateStrLocal) {
                 day.classList.add('today');
             }
+
+
 
             // Número do dia
             const dayNumber = document.createElement('div');
@@ -444,6 +520,13 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             // Adicionar informação de disponibilidade
             if (availabilityData[dateStr]) {
                 const status = availabilityData[dateStr].status;
+
+                // Adicionar indicador visual (quadradinho colorido)
+                const indicator = document.createElement('div');
+                indicator.className = `day-status-indicator ${status}`;
+                day.appendChild(indicator);
+
+
                 if (status === 'reserved') {
                     day.classList.add('reserved');
                     const event = document.createElement('div');
@@ -472,7 +555,14 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             } else {
                 // Data não está no array, então está disponível
                 day.classList.add('available');
+                // Adicionar indicador verde para disponível
+                const indicator = document.createElement('div');
+                indicator.className = 'day-status-indicator available';
+                day.appendChild(indicator);
             }
+
+
+
 
             // Adicionar meteorologia se disponível
             if (weatherData[dateStr]) {
@@ -654,18 +744,30 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
 
                 // Gerar calendário novamente para incluir disponibilidade
                 generateCalendar(currentMonth, currentYear);
+
+                // Atualizar sidebar se houver um dia selecionado
+                if (selectedDate) {
+                    const selectedDateObj = new Date(selectedDate);
+                    updateSidebarForSelectedDay(selectedDateObj, selectedDate);
+                }
             } catch (error) {
                 console.error('Erro ao carregar disponibilidade:', error);
             }
         }
 
+
         // Funções para proprietário
         async function blockDates() {
             const datesInput = document.getElementById('blockDates');
             if (!datesInput.value) {
-                alert('Selecione as datas para bloquear');
+                if (typeof AlugaTorresNotifications !== 'undefined') {
+                    AlugaTorresNotifications.warning('Selecione as datas para bloquear');
+                } else {
+                    alert('Selecione as datas para bloquear');
+                }
                 return;
             }
+
 
             // Para inputs de data múltipla, o valor já é uma string separada por vírgulas
             const dates = datesInput.value.split(',');
@@ -686,23 +788,37 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
 
                 const data = await response.json();
                 if (data.success) {
-                    alert('Datas bloqueadas com sucesso!');
+                    if (typeof AlugaTorresNotifications !== 'undefined') {
+                        AlugaTorresNotifications.success('Datas bloqueadas com sucesso!');
+                    } else {
+                        alert('Datas bloqueadas com sucesso!');
+                    }
                     loadAvailability();
                     datesInput.value = '';
                 } else {
                     throw new Error(data.error || 'Erro ao bloquear datas');
                 }
             } catch (error) {
-                alert('Erro ao bloquear datas: ' + error.message);
+                if (typeof AlugaTorresNotifications !== 'undefined') {
+                    AlugaTorresNotifications.error('Erro ao bloquear datas: ' + error.message);
+                } else {
+                    alert('Erro ao bloquear datas: ' + error.message);
+                }
             }
+
         }
 
         async function unblockDates() {
             const datesInput = document.getElementById('unblockDates');
             if (!datesInput.value) {
-                alert('Selecione as datas para desbloquear');
+                if (typeof AlugaTorresNotifications !== 'undefined') {
+                    AlugaTorresNotifications.warning('Selecione as datas para desbloquear');
+                } else {
+                    alert('Selecione as datas para desbloquear');
+                }
                 return;
             }
+
 
             const dates = datesInput.value.split(',');
 
@@ -722,15 +838,24 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
 
                 const data = await response.json();
                 if (data.success) {
-                    alert('Datas desbloqueadas com sucesso!');
+                    if (typeof AlugaTorresNotifications !== 'undefined') {
+                        AlugaTorresNotifications.success('Datas desbloqueadas com sucesso!');
+                    } else {
+                        alert('Datas desbloqueadas com sucesso!');
+                    }
                     loadAvailability();
                     datesInput.value = '';
                 } else {
                     throw new Error(data.error || 'Erro ao desbloquear datas');
                 }
             } catch (error) {
-                alert('Erro ao desbloquear datas: ' + error.message);
+                if (typeof AlugaTorresNotifications !== 'undefined') {
+                    AlugaTorresNotifications.error('Erro ao desbloquear datas: ' + error.message);
+                } else {
+                    alert('Erro ao desbloquear datas: ' + error.message);
+                }
             }
+
         }
 
         async function applySpecialPrice() {
@@ -738,9 +863,14 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             const datesInput = document.getElementById('specialPriceDates');
 
             if (!datesInput.value) {
-                alert('Selecione as datas para aplicar o preço especial');
+                if (typeof AlugaTorresNotifications !== 'undefined') {
+                    AlugaTorresNotifications.warning('Selecione as datas para aplicar o preço especial');
+                } else {
+                    alert('Selecione as datas para aplicar o preço especial');
+                }
                 return;
             }
+
 
             const dates = datesInput.value.split(',');
             const price = priceInput.value || null;
@@ -762,7 +892,11 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
 
                 const data = await response.json();
                 if (data.success) {
-                    alert('Preço especial aplicado com sucesso!');
+                    if (typeof AlugaTorresNotifications !== 'undefined') {
+                        AlugaTorresNotifications.success('Preço especial aplicado com sucesso!');
+                    } else {
+                        alert('Preço especial aplicado com sucesso!');
+                    }
                     loadAvailability();
                     priceInput.value = '';
                     datesInput.value = '';
@@ -770,8 +904,13 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     throw new Error(data.error || 'Erro ao aplicar preço especial');
                 }
             } catch (error) {
-                alert('Erro ao aplicar preço especial: ' + error.message);
+                if (typeof AlugaTorresNotifications !== 'undefined') {
+                    AlugaTorresNotifications.error('Erro ao aplicar preço especial: ' + error.message);
+                } else {
+                    alert('Erro ao aplicar preço especial: ' + error.message);
+                }
             }
+
         }
 
 
@@ -856,16 +995,39 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 `;
             } else if (tipoUtilizador === 'arrendatario' && casaId) {
                 const isAvailable = !availabilityData[dateStr] || availabilityData[dateStr].status === 'available';
-                sidebarContent += `
-                    <div class="sidebar-section">
-                        <h4><i class="fas fa-calendar-plus"></i> Reserva</h4>
-                        <p>Esta data está ${isAvailable ? 'disponível' : 'indisponível'} para reserva.</p>
-                        <button onclick="selectDateForReservation('${dateStr}')" class="btn-reservar" style="width: 100%;" ${isAvailable ? '' : 'disabled'}>
-                            <i class="fas fa-calendar-check"></i> Selecionar para Reserva
-                        </button>
-                    </div>
-                `;
+                const isBlocked = availabilityData[dateStr] && availabilityData[dateStr].status === 'blocked';
+                const isReserved = availabilityData[dateStr] && availabilityData[dateStr].status === 'reserved';
+
+                if (isBlocked || isReserved) {
+                    // Data bloqueada ou reservada - mostrar apenas mensagem de indisponível
+                    sidebarContent += `
+                        <div class="sidebar-section">
+                            <h4><i class="fas fa-calendar-plus"></i> Reserva</h4>
+                            <p style="color: #dc3545; font-weight: bold;">
+                                <i class="fas fa-times-circle"></i> 
+                                Esta data está indisponível para reserva.
+                            </p>
+                            ${isBlocked ? '<p><small>Esta data está bloqueada pelo proprietário.</small></p>' : ''}
+                            ${isReserved ? '<p><small>Esta data já está reservada.</small></p>' : ''}
+                        </div>
+                    `;
+                } else {
+                    // Data disponível - mostrar botão
+                    sidebarContent += `
+                        <div class="sidebar-section">
+                            <h4><i class="fas fa-calendar-plus"></i> Reserva</h4>
+                            <p style="color: #28a745;">
+                                <i class="fas fa-check-circle"></i> 
+                                Esta data está disponível para reserva.
+                            </p>
+                            <button onclick="selectDateForReservation('${dateStr}')" class="btn-reservar" style="width: 100%;">
+                                <i class="fas fa-calendar-check"></i> Selecionar para Reserva
+                            </button>
+                        </div>
+                    `;
+                }
             }
+
 
             // Atualizar conteúdo do sidebar (depois do widget de meteorologia)
             const weatherWidget = document.querySelector('.weather-widget');
@@ -886,17 +1048,30 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             const checkinInput = document.getElementById('checkinDate');
             const checkoutInput = document.getElementById('checkoutDate');
 
+            // Converter de YYYY-MM-DD para DD/MM/YYYY
+            function formatToDisplay(dateISO) {
+                if (!dateISO) return '';
+                const parts = dateISO.split('-');
+                if (parts.length === 3) {
+                    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                }
+                return dateISO;
+            }
+
+            const formattedDate = formatToDisplay(dateStr);
+
             if (!checkinInput.value) {
-                checkinInput.value = dateStr;
+                checkinInput.value = formattedDate;
             } else if (!checkoutInput.value) {
-                checkoutInput.value = dateStr;
+                checkoutInput.value = formattedDate;
             } else {
-                checkinInput.value = dateStr;
+                checkinInput.value = formattedDate;
                 checkoutInput.value = '';
             }
 
             updateReservationSummary();
         }
+
 
         // Funções para ações do proprietário no sidebar
         async function toggleBlockDate(dateStr) {
@@ -918,14 +1093,25 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
 
                 const data = await response.json();
                 if (data.success) {
-                    alert(`Data ${isBlocked ? 'desbloqueada' : 'bloqueada'} com sucesso!`);
+                    const msg = `Data ${isBlocked ? 'desbloqueada' : 'bloqueada'} com sucesso!`;
+                    if (typeof AlugaTorresNotifications !== 'undefined') {
+                        AlugaTorresNotifications.success(msg);
+                    } else {
+                        alert(msg);
+                    }
                     loadAvailability();
                 } else {
                     throw new Error(data.error || `Erro ao ${isBlocked ? 'desbloquear' : 'bloquear'} data`);
                 }
             } catch (error) {
-                alert(`Erro ao ${isBlocked ? 'desbloquear' : 'bloquear'} data: ` + error.message);
+                const msg = `Erro ao ${isBlocked ? 'desbloquear' : 'bloquear'} data: ` + error.message;
+                if (typeof AlugaTorresNotifications !== 'undefined') {
+                    AlugaTorresNotifications.error(msg);
+                } else {
+                    alert(msg);
+                }
             }
+
         }
 
         async function saveSpecialPrice(dateStr) {
@@ -949,14 +1135,23 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
 
                 const data = await response.json();
                 if (data.success) {
-                    alert('Preço especial salvo com sucesso!');
+                    if (typeof AlugaTorresNotifications !== 'undefined') {
+                        AlugaTorresNotifications.success('Preço especial salvo com sucesso!');
+                    } else {
+                        alert('Preço especial salvo com sucesso!');
+                    }
                     loadAvailability();
                 } else {
                     throw new Error(data.error || 'Erro ao salvar preço especial');
                 }
             } catch (error) {
-                alert('Erro ao salvar preço especial: ' + error.message);
+                if (typeof AlugaTorresNotifications !== 'undefined') {
+                    AlugaTorresNotifications.error('Erro ao salvar preço especial: ' + error.message);
+                } else {
+                    alert('Erro ao salvar preço especial: ' + error.message);
+                }
             }
+
         }
 
         function processWeatherData(apiData) {
@@ -1239,26 +1434,62 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
         }
 
         async function makeReservation() {
+            console.log('=== INICIANDO RESERVA ===');
+
             const checkinRaw = document.getElementById('checkinDate').value;
             const checkoutRaw = document.getElementById('checkoutDate').value;
             const guests = document.getElementById('numGuests').value;
 
+            console.log('Valores dos inputs:');
+            console.log('- checkinRaw:', checkinRaw);
+            console.log('- checkoutRaw:', checkoutRaw);
+            console.log('- guests:', guests);
+            console.log('- casaId:', casaId);
+
             if (!checkinRaw || !checkoutRaw) {
-                alert('Selecione as datas de checkin e checkout');
+                if (typeof AlugaTorresNotifications !== 'undefined') {
+                    AlugaTorresNotifications.warning('Selecione as datas de checkin e checkout');
+                } else {
+                    alert('Selecione as datas de checkin e checkout');
+                }
+                console.log('ERRO: Datas não preenchidas');
                 return;
             }
+
 
             const checkin = toISO(checkinRaw);
             const checkout = toISO(checkoutRaw);
 
+            console.log('Após conversão toISO:');
+            console.log('- checkin (ISO):', checkin);
+            console.log('- checkout (ISO):', checkout);
+
             if (!checkin || !checkout) {
-                alert('Formato de data inválido');
+                if (typeof AlugaTorresNotifications !== 'undefined') {
+                    AlugaTorresNotifications.error('Formato de data inválido');
+                } else {
+                    alert('Formato de data inválido');
+                }
+                console.log('ERRO: Formato de data inválido após conversão');
                 return;
             }
 
+
             if (!confirm('Confirmar reserva?')) {
+                console.log('Usuário cancelou a confirmação');
                 return;
             }
+
+            const requestBody = {
+                action: 'create',
+                casa_id: casaId,
+                checkin: checkin,
+                checkout: checkout,
+                hospedes: parseInt(guests),
+                tipo_utiliador: tipoUtilizador
+            };
+
+            console.log('Enviando requisição:', requestBody);
 
             try {
                 const response = await fetch('backend/api_reservas.php', {
@@ -1266,20 +1497,31 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        action: 'create',
-                        casa_id: casaId,
-                        checkin: checkin,
-                        checkout: checkout,
-                        hospedes: guests,
-                        tipo_utiliador: tipoUtiliador
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
-                const data = await response.json();
+                console.log('Status da resposta:', response.status);
+
+                const responseText = await response.text();
+                console.log('Resposta bruta:', responseText);
+
+                let data;
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    console.error('Erro ao parsear JSON:', e);
+                    alert('Erro: Resposta inválida do servidor');
+                    return;
+                }
+
+                console.log('Dados parseados:', data);
 
                 if (data.success) {
-                    alert('Reserva criada com sucesso!');
+                    if (typeof AlugaTorresNotifications !== 'undefined') {
+                        AlugaTorresNotifications.success('Reserva criada com sucesso! ID: ' + data.reserva_id);
+                    } else {
+                        alert('Reserva criada com sucesso! ID: ' + data.reserva_id);
+                    }
                     // Limpar formulário
                     document.getElementById('checkinDate').value = '';
                     document.getElementById('checkoutDate').value = '';
@@ -1287,11 +1529,22 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     // Recarregar disponibilidade
                     loadAvailability();
                 } else {
-                    alert('Erro: ' + data.error);
+                    if (typeof AlugaTorresNotifications !== 'undefined') {
+                        AlugaTorresNotifications.error('Erro: ' + (data.error || 'Erro desconhecido'));
+                    } else {
+                        alert('Erro: ' + (data.error || 'Erro desconhecido'));
+                    }
+                    console.error('Erro retornado pela API:', data.error);
                 }
             } catch (error) {
-                alert('Erro ao criar reserva: ' + error.message);
+                console.error('Erro na requisição:', error);
+                if (typeof AlugaTorresNotifications !== 'undefined') {
+                    AlugaTorresNotifications.error('Erro ao criar reserva: ' + error.message);
+                } else {
+                    alert('Erro ao criar reserva: ' + error.message);
+                }
             }
+
         }
     </script>
 
@@ -1330,7 +1583,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             });
         });
     </script>
-    </script>
 </body>
+
 
 </html>

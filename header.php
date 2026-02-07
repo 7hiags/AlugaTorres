@@ -1,11 +1,15 @@
 <?php
 // Base do projeto (XAMPP)
-$BASE_URL = '/alugatorres/';
+$BASE_URL = '/AlugaTorres/';
+
 
 // inicia sessão se ainda não existir
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+// Incluir helper de notificações
+require_once __DIR__ . '/backend/notifications_helper.php';
 
 if (!isset($_SESSION['refreshed'])) {
     $_SESSION['refreshed'] = true;  // marca que já deu refresh
@@ -13,6 +17,7 @@ if (!isset($_SESSION['refreshed'])) {
     exit;  // interrompe o resto do header
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="pt">
 
@@ -22,7 +27,21 @@ if (!isset($_SESSION['refreshed'])) {
     <meta name="description" content="AlugaTorres - Sua agência de viagens para destinos incríveis">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="<?= $BASE_URL ?>style/style.css">
+    <!-- Sistema de Notificações Toast -->
+    <script src="<?= $BASE_URL ?>backend/notifications.js"></script>
+    <script>
+        // Verificar se o sistema de notificações carregou corretamente
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof AlugaTorresNotifications === 'undefined') {
+                console.error('[AlugaTorres] ERRO: Sistema de notificações não carregou!');
+            } else {
+                console.log('[AlugaTorres] Sistema de notificações pronto');
+            }
+        });
+    </script>
 </head>
+
+
 
 <body>
 
@@ -73,4 +92,7 @@ if (!isset($_SESSION['refreshed'])) {
             </div>
         </div>
     </header>
+
+    <!-- Renderizar notificações pendentes da sessão -->
+    <?= renderPendingNotifications() ?>
 </body>
