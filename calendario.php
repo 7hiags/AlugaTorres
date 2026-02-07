@@ -191,7 +191,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                             <!-- Resumo da reserva será carregado aqui -->
                         </div>
 
-                        <button type="button" class="btn-reservar" id="btnReservar">Reservar Agora</button>
+                        <button type="button" class="btn-reservar" id="btnReservar"><i class="fas fa-calendar-check"></i> Reservar Agora</button>
 
                     </div>
                 <?php elseif ($tipo_utilizador === 'proprietario' && $casa_id): ?>
@@ -898,17 +898,14 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                         </div>
                     `;
                 } else {
-                    // Data disponível - mostrar botão
+                    // Data disponível - mostrar mensagem
                     sidebarContent += `
                         <div class="sidebar-section">
                             <h4><i class="fas fa-calendar-plus"></i> Reserva</h4>
                             <p style="color: #28a745;">
-                                <i class="fas fa-check-circle"></i> 
+                                <i class="fas fa-check-circle"></i>
                                 Esta data está disponível para reserva.
                             </p>
-                            <button onclick="selectDateForReservation('${dateStr}')" class="btn-reservar" style="width: 100%;">
-                                <i class="fas fa-calendar-check"></i> Selecionar para Reserva
-                            </button>
                         </div>
                     `;
                 }

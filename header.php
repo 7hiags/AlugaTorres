@@ -11,9 +11,10 @@ if (session_status() === PHP_SESSION_NONE) {
 // Incluir helper de notificações
 require_once __DIR__ . '/backend/notifications_helper.php';
 
-if (!isset($_SESSION['refreshed'])) {
-    $_SESSION['refreshed'] = true;  // marca que já deu refresh
-    header("Location: " . $_SERVER['REQUEST_URI']);  // redireciona para a mesma página
+if (!isset($_GET['refreshed'])) {
+    // Adiciona o parâmetro refreshed à URL
+    $separator = strpos($_SERVER['REQUEST_URI'], '?') !== false ? '&' : '?';
+    header("Location: " . $_SERVER['REQUEST_URI'] . $separator . 'refreshed=1');
     exit;  // interrompe o resto do header
 }
 ?>
