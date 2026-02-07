@@ -194,41 +194,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 <?php elseif ($tipo_utilizador === 'proprietario' && $casa_id): ?>
                     <div class="reservation-form">
                         <h3><i class="fas fa-calendar-alt"></i> Gerir Disponibilidade</h3>
-
-                        <div class="form-group">
-                            <label>Datas para Bloquear</label>
-                            <input type="date" id="blockDates" class="date-input" multiple>
-                        </div>
-
-                        <button class="btn-reservar" id="btnBloquear" style="background: #ffc107; width: 100%; margin-bottom: 15px;">
-                            <i class="fas fa-lock"></i> Bloquear Datas Selecionadas
-                        </button>
-
-                        <div class="form-group">
-                            <label>Datas para Desbloquear</label>
-                            <input type="date" id="unblockDates" class="date-input" multiple>
-                        </div>
-
-                        <button class="btn-reservar" id="btnDesbloquear" style="background: #28a745; width: 100%; margin-bottom: 15px;">
-                            <i class="fas fa-unlock"></i> Desbloquear Datas Selecionadas
-                        </button>
-
-                        <div class="form-group">
-                            <label>Datas para Preço Especial</label>
-                            <input type="date" id="specialPriceDates" class="date-input" multiple>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Preço Especial (€)</label>
-                            <input type="number" id="specialPrice" class="date-input" placeholder="Preço por noite" step="0.01">
-                            <small style="display: block; margin-top: 5px; color: #666;">
-                                Deixe vazio para usar preço normal
-                            </small>
-                        </div>
-
-                        <button class="btn-reservar" id="btnAplicarPreco" style="background: #17a2b8; width: 100%;">
-                            <i class="fas fa-euro-sign"></i> Aplicar Preço Especial
-                        </button>
+                        <p>Clique em um dia do calendário para bloquear ou desbloquear datas.</p>
                     </div>
                 <?php endif; ?>
             </div>
@@ -409,12 +375,8 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 document.getElementById('btnReservar').addEventListener('click', makeReservation);
             }
 
-            // Botões para proprietário
-            if (document.getElementById('btnBloquear')) {
-                document.getElementById('btnBloquear').addEventListener('click', blockDates);
-                document.getElementById('btnDesbloquear').addEventListener('click', unblockDates);
-                document.getElementById('btnAplicarPreco').addEventListener('click', applySpecialPrice);
-            }
+            // Botões para proprietário no sidebar
+            // Os botões são adicionados dinamicamente no updateSidebarForSelectedDay
         });
 
         function generateCalendar(month, year) {
@@ -651,8 +613,8 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     statusEl.className = 'weather-source weather-source-warning';
                 }
 
-                // Fallback para Open-Meteo
-                const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=39.4811&longitude=-8.5394&daily=temperature_2m_max,temperature_2m_min,weathercode,windspeed_10m_max&forecast_days=16&timezone=Europe/Lisbon');
+                // Fallback para Open-Meteo (incluindo dados horários para humidade)
+                const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=39.4811&longitude=-8.5394&daily=temperature_2m_max,temperature_2m_min,weathercode,windspeed_10m_max&hourly=relative_humidity_2m&forecast_days=16&timezone=Europe/Lisbon');
                 if (!response.ok) throw new Error('Erro ao carregar meteorologia');
 
                 const apiData = await response.json();
@@ -880,20 +842,15 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
 
             // Ações conforme tipo de usuário
             if (tipoUtilizador === 'proprietario' && casaId) {
+                const isBlocked = availabilityData[dateStr] && availabilityData[dateStr].status === 'blocked';
+                const buttonText = isBlocked ? 'Desbloquear Data' : 'Bloquear Data';
+                const buttonIcon = isBlocked ? 'fa-unlock' : 'fa-lock';
+                const buttonColor = isBlocked ? '#28a745' : '#ffc107';
                 sidebarContent += `
                     <div class="sidebar-section">
                         <h4><i class="fas fa-cogs"></i> Ações</h4>
-                        <button onclick="toggleBlockDate('${dateStr}')" class="btn-reservar" style="margin-bottom: 10px; width: 100%;">
-                            ${availabilityData[dateStr] && availabilityData[dateStr].status === 'blocked' ? 'Desbloquear Data' : 'Bloquear Data'}
-                        </button>
-                        <div class="form-group">
-                            <label>Preço Especial (€)</label>
-                            <input type="number" id="sidebarSpecialPrice" class="date-input"
-                                   value="${availabilityData[dateStr] ? availabilityData[dateStr].special_price || '' : ''}"
-                                   placeholder="Preço normal">
-                        </div>
-                        <button onclick="saveSpecialPrice('${dateStr}')" class="btn-reservar" style="background: #17a2b8; width: 100%;">
-                            <i class="fas fa-save"></i> Salvar Preço
+                        <button onclick="toggleBlockDate('${dateStr}')" class="btn-reservar" style="margin-bottom: 10px; width: 100%; background: ${buttonColor};">
+                            <i class="fas ${buttonIcon}"></i> ${buttonText}
                         </button>
                     </div>
                 `;
@@ -903,12 +860,9 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     <div class="sidebar-section">
                         <h4><i class="fas fa-calendar-plus"></i> Reserva</h4>
                         <p>Esta data está ${isAvailable ? 'disponível' : 'indisponível'} para reserva.</p>
-                        ${isAvailable ?
-                            `<button onclick="selectDateForReservation('${dateStr}')" class="btn-reservar" style="width: 100%;">
-                                <i class="fas fa-calendar-check"></i> Selecionar para Reserva
-                            </button>` :
-                            '<p style="color: #dc3545;">Data não disponível para reserva.</p>'
-                        }
+                        <button onclick="selectDateForReservation('${dateStr}')" class="btn-reservar" style="width: 100%;" ${isAvailable ? '' : 'disabled'}>
+                            <i class="fas fa-calendar-check"></i> Selecionar para Reserva
+                        </button>
                     </div>
                 `;
             }
@@ -926,6 +880,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 }
             }
         }
+
 
         function selectDateForReservation(dateStr) {
             const checkinInput = document.getElementById('checkinDate');
@@ -1072,12 +1027,35 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 99: "11d"
             };
 
-            // Extrai arrays de dados
+            // Extrai arrays de dados diários
             const datas = apiData.daily.time;
             const tempMax = apiData.daily.temperature_2m_max;
             const tempMin = apiData.daily.temperature_2m_min;
             const weatherCodes = apiData.daily.weathercode;
             const windSpeed = apiData.daily.windspeed_10m_max;
+
+            // Extrai dados horários de humidade (se disponíveis)
+            const hourlyTimes = apiData.hourly ? apiData.hourly.time : [];
+            const hourlyHumidity = apiData.hourly ? apiData.hourly.relative_humidity_2m : [];
+
+            // Função para calcular humidade média do dia
+            function calcularHumidadeMedia(dataStr) {
+                if (!hourlyTimes.length || !hourlyHumidity.length) return 0;
+
+                // Filtrar valores horários que pertencem a esta data
+                const valoresDia = [];
+                for (let j = 0; j < hourlyTimes.length; j++) {
+                    if (hourlyTimes[j].startsWith(dataStr)) {
+                        valoresDia.push(hourlyHumidity[j]);
+                    }
+                }
+
+                if (valoresDia.length === 0) return 0;
+
+                // Calcular média
+                const soma = valoresDia.reduce((acc, val) => acc + val, 0);
+                return Math.round(soma / valoresDia.length);
+            }
 
             // Processa cada dia
             for (let i = 0; i < datas.length; i++) {
@@ -1087,6 +1065,9 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 // Mapeia weather code para descrição
                 const weatherDesc = weatherCodesMap[weatherCodes[i]] || "condições desconhecidas";
                 const iconCode = iconMapping[weatherCodes[i]] || "01d";
+
+                // Calcular humidade média para o dia
+                const humidadeMedia = calcularHumidadeMedia(dataStr);
 
                 // Cria objeto do dia
                 const diaInfo = {
@@ -1103,7 +1084,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     'descricao': weatherDesc,
                     'descricao_pt': weatherDesc,
                     'icone': `http://openweathermap.org/img/wn/${iconCode}@2x.png`,
-                    'humidade_media': 0, // Open-Meteo não fornece humidade na versão básica
+                    'humidade_media': humidadeMedia,
                     'vento_medio': windSpeed[i],
                     'hoje': dataStr === hoje,
                     'numero_previsoes': 1
