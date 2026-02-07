@@ -1,0 +1,488 @@
+<?php
+session_start();
+require_once '../backend/db.php';
+
+// Verificar se é proprietário
+if (!isset($_SESSION['user_id']) || !isset($_SESSION['tipo_utilizador']) || $_SESSION['tipo_utilizador'] !== 'proprietario') {
+    header("Location: backend/login.php");
+    exit;
+}
+// Verificar se o usuário ainda existe na base de dados
+$stmt = $conn->prepare("SELECT id FROM utilizadores WHERE id = ?");
+$stmt->bind_param("i", $_SESSION['user_id']);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result->num_rows === 0) {
+    session_destroy();
+    header("Location: ../backend/login.php");
+    exit;
+}
+$user_id = $_SESSION['user_id'];
+$error = '';
+$success = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        // Validar e sanitizar dados
+        $titulo = trim($_POST['titulo']);
+        $descricao = trim($_POST['descricao']);
+        $morada = trim($_POST['morada']);
+        $codigo_postal = trim($_POST['codigo_postal']);
+        $cidade = trim($_POST['cidade']);
+        $freguesia = trim($_POST['freguesia']);
+        $tipo_propriedade = $_POST['tipo_propriedade'];
+        $quartos = (int)$_POST['quartos'];
+        $camas = (int)$_POST['camas'];
+        $banheiros = (int)$_POST['banheiros'];
+        $area = !empty($_POST['area']) ? (int)$_POST['area'] : null;
+        $capacidade = (int)$_POST['capacidade'];
+        $preco_noite = (float)$_POST['preco_noite'];
+        $preco_limpeza = !empty($_POST['preco_limpeza']) ? (float)$_POST['preco_limpeza'] : 0;
+        $taxa_seguranca = !empty($_POST['taxa_seguranca']) ? (float)$_POST['taxa_seguranca'] : 0;
+        $minimo_noites = (int)$_POST['minimo_noites'];
+        $maximo_noites = (int)$_POST['maximo_noites'];
+        $hora_checkin = $_POST['hora_checkin'] ?? '15:00';
+        $hora_checkout = $_POST['hora_checkout'] ?? '11:00';
+
+        // Comodidades (array para JSON)
+        $comodidades = isset($_POST['comodidades']) ? $_POST['comodidades'] : [];
+        $comodidades_json = json_encode($comodidades);
+
+        $regras = trim($_POST['regras']);
+
+        // Validações básicas
+        if (empty($titulo) || empty($morada) || empty($preco_noite)) {
+            throw new Exception('Preencha todos os campos obrigatórios');
+        }
+
+        if ($preco_noite <= 0) {
+            throw new Exception('Preço por noite deve ser maior que zero');
+        }
+
+        // Inserir no banco
+        $stmt = $conn->prepare("
+            INSERT INTO casas (
+                proprietario_id, titulo, descricao, morada, codigo_postal, cidade, freguesia,
+                tipo_propriedade, quartos, camas, banheiros, area, capacidade,
+                preco_noite, preco_limpeza, taxa_seguranca, minimo_noites, maximo_noites,
+                hora_checkin, hora_checkout, comodidades, regras
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        $stmt->bind_param(
+            "isssssssiiiiddddiissss",
+            $user_id,
+            $titulo,
+            $descricao,
+            $morada,
+            $codigo_postal,
+            $cidade,
+            $freguesia,
+            $tipo_propriedade,
+            $quartos,
+            $camas,
+            $banheiros,
+            $area,
+            $capacidade,
+            $preco_noite,
+            $preco_limpeza,
+            $taxa_seguranca,
+            $minimo_noites,
+            $maximo_noites,
+            $hora_checkin,
+            $hora_checkout,
+            $comodidades_json,
+            $regras
+        );
+
+        if ($stmt->execute()) {
+            $casa_id = $stmt->insert_id;
+            $success = 'Casa adicionada com sucesso!';
+            header("Location: editar_casa.php?id=$casa_id&success=1");
+            exit;
+        } else {
+            throw new Exception('Erro ao salvar no banco de dados: ' . $conn->error);
+        }
+    } catch (Exception $e) {
+        $error = $e->getMessage();
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="pt-pt">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlugaTorres | Adicionar Casa</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../style/style.css">
+</head>
+
+<body>
+    <?php include '../header.php'; ?>
+    <?php include '../sidebar.php'; ?>
+
+    <div class="form-container">
+        <div class="form-header">
+            <h1 class="form-title">Adicionar Nova Casa</h1>
+            <p class="form-subtitle">Preencha os detalhes da sua propriedade para começar a receber reservas</p>
+        </div>
+
+        <?php if ($error): ?>
+            <div class="message error">
+                <?php echo htmlspecialchars($error); ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if ($success): ?>
+            <div class="message success">
+                <?php echo htmlspecialchars($success); ?>
+                <div style="margin-top: 10px;">
+                    <a href="../perfil.php" class="btn-save" onclick="localStorage.setItem('atualizarStats', 'true');">
+                        <i class="fas fa-chart-line"></i> Ver Estatísticas Atualizadas
+                    </a>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <form method="POST" class="casa-form">
+            <!-- Seção 1: Informações Básicas -->
+            <div class="form-section">
+                <h2 class="section-title"><i class="fas fa-info-circle"></i> Informações Básicas</h2>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Título da Propriedade <span class="required">*</span></label>
+                        <input type="text" name="titulo" class="form-control" required
+                            placeholder="Ex: Encantadora casa no centro de Torres Novas"
+                            value="<?php echo isset($_POST['titulo']) ? htmlspecialchars($_POST['titulo']) : ''; ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Tipo de Propriedade <span class="required">*</span></label>
+                        <select name="tipo_propriedade" class="form-control" required>
+                            <option value="casa" <?php echo (isset($_POST['tipo_propriedade']) && $_POST['tipo_propriedade'] == 'casa') ? 'selected' : ''; ?>>Casa</option>
+                            <option value="apartamento" <?php echo (isset($_POST['tipo_propriedade']) && $_POST['tipo_propriedade'] == 'apartamento') ? 'selected' : ''; ?>>Apartamento</option>
+                            <option value="vivenda" <?php echo (isset($_POST['tipo_propriedade']) && $_POST['tipo_propriedade'] == 'vivenda') ? 'selected' : ''; ?>>Vivenda</option>
+                            <option value="quinta" <?php echo (isset($_POST['tipo_propriedade']) && $_POST['tipo_propriedade'] == 'quinta') ? 'selected' : ''; ?>>Quinta</option>
+                            <option value="outro" <?php echo (isset($_POST['tipo_propriedade']) && $_POST['tipo_propriedade'] == 'outro') ? 'selected' : ''; ?>>Outro</option>
+                        </select>
+                        <div id="campo-outro" class="hidden-outro" style="margin-top: 10px;">
+                            <input type="text" name="outro_texto" placeholder="Especifique outro tipo de propriedade" class="form-control"
+                                value="<?php echo isset($_POST['outro_texto']) ? htmlspecialchars($_POST['outro_texto']) : ''; ?>">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Descrição <span class="required">*</span></label>
+                    <textarea name="descricao" class="form-control" required rows="4"
+                        placeholder="Descreva a sua propriedade, localização, características únicas..."><?php echo isset($_POST['descricao']) ? htmlspecialchars($_POST['descricao']) : ''; ?></textarea>
+                </div>
+            </div>
+
+            <!-- Seção 2: Localização -->
+            <div class="form-section">
+                <h2 class="section-title"><i class="fas fa-map-marker-alt"></i> Localização</h2>
+
+                <div class="form-group">
+                    <label>Morada Completa <span class="required">*</span></label>
+                    <input type="text" name="morada" class="form-control" required
+                        placeholder="Ex: Rua Principal, 123"
+                        value="<?php echo isset($_POST['morada']) ? htmlspecialchars($_POST['morada']) : ''; ?>">
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Código Postal</label>
+                        <input type="text" name="codigo_postal" class="form-control"
+                            placeholder="Ex: 2350-000"
+                            value="<?php echo isset($_POST['codigo_postal']) ? htmlspecialchars($_POST['codigo_postal']) : ''; ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Cidade <span class="required">*</span></label>
+                        <input type="text" name="cidade" class="form-control" required
+                            value="Torres Novas" readonly
+                            value="<?php echo isset($_POST['cidade']) ? htmlspecialchars($_POST['cidade']) : 'Torres Novas'; ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Freguesia</label>
+                        <select type="text" name="freguesia" class="form-control"
+                            placeholder="Ex: Santa Maria"
+                            value="<?php echo isset($_POST['freguesia']) ? htmlspecialchars($_POST['freguesia']) : ''; ?>">
+                            <option value="assentiz" <?php echo (isset($_POST['freguesia']) && $_POST['freguesia'] == 'assentiz') ? 'selected' : ''; ?>>Assentiz</option>
+                            <option value="chancelaria" <?php echo (isset($_POST['freguesia']) && $_POST['freguesia'] == 'chancelaria') ? 'selected' : ''; ?>>Chancelaria</option>
+                            <option value="meia-via" <?php echo (isset($_POST['freguesia']) && $_POST['freguesia'] == 'meia-via') ? 'selected' : ''; ?>>Meia Via</option>
+                            <option value="pedrogao" <?php echo (isset($_POST['freguesia']) && $_POST['freguesia'] == 'pedrogao') ? 'selected' : ''; ?>>Pedrógão</option>
+                            <option value="riachos" <?php echo (isset($_POST['freguesia']) && $_POST['freguesia'] == 'riachos') ? 'selected' : ''; ?>>Riachos</option>
+                            <option value="UF-brogueira-Parceiros-Alcorochel" <?php echo (isset($_POST['freguesia']) && $_POST['freguesia'] == 'UF-brogueira-Parceiros-Alcorochel') ? 'selected' : ''; ?>>Brogueira/Parceiros/Alcorochel</option>
+                            <option value="UF-olaia-paco" <?php echo (isset($_POST['freguesia']) && $_POST['freguesia'] == 'UF-olaia-paco') ? 'selected' : ''; ?>>Olaia/Paço</option>
+                            <option value="UFT-santamaria-salvador-santiago" <?php echo (isset($_POST['freguesia']) && $_POST['freguesia'] == 'UFT-santamaria-salvador-santiago') ? 'selected' : ''; ?>>Santa Maria/Salvador/Santiago</option>
+                            <option value="UFT-saopedro-lapas-ribeirab" <?php echo (isset($_POST['freguesia']) && $_POST['freguesia'] == 'UFT-saopedro-lapas-ribeirab') ? 'selected' : ''; ?>>São Pedro/Lapas/Ribeira Branca</option>
+                            <option value="UF-zibreira" <?php echo (isset($_POST['freguesia']) && $_POST['freguesia'] == 'UF-zibreira') ? 'selected' : ''; ?>>Zibreira</option>
+                        </select>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção 3: Detalhes da Propriedade -->
+            <div class="form-section">
+                <h2 class="section-title"><i class="fas fa-home"></i> Detalhes da Propriedade</h2>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Quartos <span class="required">*</span></label>
+                        <input type="number" name="quartos" class="form-control" required min="1" max="20"
+                            value="<?php echo isset($_POST['quartos']) ? $_POST['quartos'] : '1'; ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Camas <span class="required">*</span></label>
+                        <input type="number" name="camas" class="form-control" required min="1" max="50"
+                            value="<?php echo isset($_POST['camas']) ? $_POST['camas'] : '1'; ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Banheiros <span class="required">*</span></label>
+                        <input type="number" name="banheiros" class="form-control" required min="1" max="20"
+                            value="<?php echo isset($_POST['banheiros']) ? $_POST['banheiros'] : '1'; ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Área (m²)</label>
+                        <input type="number" name="area" class="form-control" min="1"
+                            value="<?php echo isset($_POST['area']) ? $_POST['area'] : ''; ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Capacidade (hóspedes) <span class="required">*</span></label>
+                        <input type="number" name="capacidade" class="form-control" required min="1" max="100"
+                            value="<?php echo isset($_POST['capacidade']) ? $_POST['capacidade'] : '2'; ?>">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção 4: Preços e Regras -->
+            <div class="form-section">
+                <h2 class="section-title"><i class="fas fa-euro-sign"></i> Preços e Regras</h2>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Preço por Noite (€) <span class="required">*</span></label>
+                        <input type="number" name="preco_noite" class="form-control" required min="1" step="0.01"
+                            value="<?php echo isset($_POST['preco_noite']) ? $_POST['preco_noite'] : ''; ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Taxa de Limpeza (€)</label>
+                        <input type="number" name="preco_limpeza" class="form-control" min="0" step="0.01"
+                            value="<?php echo isset($_POST['preco_limpeza']) ? $_POST['preco_limpeza'] : '0'; ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Taxa de Segurança (€)</label>
+                        <input type="number" name="taxa_seguranca" class="form-control" min="0" step="0.01"
+                            value="<?php echo isset($_POST['taxa_seguranca']) ? $_POST['taxa_seguranca'] : '0'; ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Mínimo de Noites <span class="required">*</span></label>
+                        <input type="number" name="minimo_noites" class="form-control" required min="1"
+                            value="<?php echo isset($_POST['minimo_noites']) ? $_POST['minimo_noites'] : '1'; ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Máximo de Noites</label>
+                        <input type="number" name="maximo_noites" class="form-control" min="1"
+                            value="<?php echo isset($_POST['maximo_noites']) ? $_POST['maximo_noites'] : '30'; ?>">
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Hora de Check-in <span class="required">*</span></label>
+                        <div style="display: flex; gap: 10px;">
+                            <select name="hora_checkin_hora" class="form-control" required style="flex: 1;">
+                                <?php
+                                $hora_checkin = isset($_POST['hora_checkin']) ? $_POST['hora_checkin'] : '15:00';
+                                list($hora_sel, $min_sel) = explode(':', $hora_checkin);
+                                for ($hora = 0; $hora < 24; $hora++) {
+                                    $selected = ($hora == (int)$hora_sel) ? 'selected' : '';
+                                    echo "<option value=\"$hora\" $selected>" . sprintf('%02d', $hora) . "</option>";
+                                }
+                                ?>
+                            </select>
+                            <span style="align-self: center;">:</span>
+                            <select name="hora_checkin_minuto" class="form-control" required style="flex: 1;">
+                                <?php
+                                for ($min = 0; $min < 60; $min++) {
+                                    $min_formatado = sprintf('%02d', $min);
+                                    $selected = ($min_formatado == $min_sel) ? 'selected' : '';
+                                    echo "<option value=\"$min_formatado\" $selected>$min_formatado</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        <input type="hidden" name="hora_checkin" id="hora_checkin_hidden" value="<?php echo $hora_checkin; ?>">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Hora de Check-out <span class="required">*</span></label>
+                        <div style="display: flex; gap: 10px;">
+                            <select name="hora_checkout_hora" class="form-control" required style="flex: 1;">
+                                <?php
+                                $hora_checkout = isset($_POST['hora_checkout']) ? $_POST['hora_checkout'] : '11:00';
+                                list($hora_sel, $min_sel) = explode(':', $hora_checkout);
+                                for ($hora = 0; $hora < 24; $hora++) {
+                                    $selected = ($hora == (int)$hora_sel) ? 'selected' : '';
+                                    echo "<option value=\"$hora\" $selected>" . sprintf('%02d', $hora) . "</option>";
+                                }
+                                ?>
+                            </select>
+                            <span style="align-self: center;">:</span>
+                            <select name="hora_checkout_minuto" class="form-control" required style="flex: 1;">
+                                <?php
+                                for ($min = 0; $min < 60; $min++) {
+                                    $min_formatado = sprintf('%02d', $min);
+                                    $selected = ($min_formatado == $min_sel) ? 'selected' : '';
+                                    echo "<option value=\"$min_formatado\" $selected>$min_formatado</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        <input type="hidden" name="hora_checkout" id="hora_checkout_hidden" value="<?php echo $hora_checkout; ?>">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Regras da Casa</label>
+                    <textarea name="regras" class="form-control" rows="3"
+                        placeholder="Ex: Não são permitidos animais, Proibido fumar, Silêncio após as 22h..."><?php echo isset($_POST['regras']) ? htmlspecialchars($_POST['regras']) : ''; ?></textarea>
+                </div>
+            </div>
+
+            <!-- Seção 5: Comodidades -->
+            <div class="form-section">
+                <h2 class="section-title"><i class="fas fa-star"></i> Comodidades</h2>
+
+                <p>Selecione as comodidades disponíveis na sua propriedade:</p>
+
+                <div class="checkbox-grid">
+                    <?php
+                    $comodidades = [
+                        'wifi' => 'Wi-Fi',
+                        'tv' => 'TV',
+                        'ar_condicionado' => 'Ar Condicionado',
+                        'aquecimento' => 'Aquecimento',
+                        'cozinha' => 'Cozinha Equipada',
+                        'frigorifico' => 'Frigorífico',
+                        'microondas' => 'Microondas',
+                        'maquina_lavar' => 'Máquina de Lavar',
+                        'secador' => 'Secador de Cabelo',
+                        'ferro' => 'Ferro de Engomar',
+                        'estacionamento' => 'Estacionamento Gratuito',
+                        'piscina' => 'Piscina',
+                        'jardim' => 'Jardim',
+                        'varanda' => 'Varanda',
+                        'churrasqueira' => 'Churrasqueira',
+                        'acesso_cadeira_rodas' => 'Acesso para Cadeira de Rodas',
+                        'elevador' => 'Elevador',
+                        'aquecedor' => 'Aquecedor',
+                        'ventilador' => 'Ventilador',
+                        'cacifos' => 'Cacifos/Bagageira'
+                    ];
+
+                    foreach ($comodidades as $value => $label):
+                        $checked = isset($_POST['comodidades']) && in_array($value, $_POST['comodidades']) ? 'checked' : '';
+                    ?>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="comodidades[]" value="<?php echo $value; ?>" <?php echo $checked; ?>>
+                            <span><?php echo $label; ?></span>
+                        </label>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <!-- Ações do Formulário -->
+            <div class="form-actions">
+                <a href="../dashboard.php" class="btn-cancel">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-save"></i> Adicionar Casa
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <?php include '../footer.php'; ?>
+
+    <script src="../backend/script.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const profileToggle = document.getElementById("profile-toggle");
+            const sidebar = document.getElementById("sidebar");
+            const sidebarOverlay = document.getElementById("sidebar-overlay");
+            const closeSidebar = document.getElementById("close-sidebar");
+
+            if (profileToggle) {
+                profileToggle.addEventListener("click", function(event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    sidebar.classList.toggle("active");
+                    sidebarOverlay.classList.toggle("active");
+                });
+            }
+
+            if (closeSidebar) {
+                closeSidebar.addEventListener("click", function() {
+                    sidebar.classList.remove("active");
+                    sidebarOverlay.classList.remove("active");
+                });
+            }
+
+            // Close sidebar when clicking outside
+            document.addEventListener("click", function(event) {
+                if (
+                    !sidebar.contains(event.target) &&
+                    !profileToggle.contains(event.target)
+                ) {
+                    sidebar.classList.remove("active");
+                    sidebarOverlay.classList.remove("active");
+                }
+            });
+        });
+    </script>
+
+    document.addEventListener('DOMContentLoaded', function() {
+    // Função para combinar hora e minuto nos campos hidden
+    function updateTimeFields() {
+    // Check-in
+    const checkinHora = document.querySelector('select[name="hora_checkin_hora"]').value;
+    const checkinMinuto = document.querySelector('select[name="hora_checkin_minuto"]').value;
+    const checkinHidden = document.getElementById('hora_checkin_hidden');
+    checkinHidden.value = checkinHora.padStart(2, '0') + ':' + checkinMinuto;
+
+    // Check-out
+    const checkoutHora = document.querySelector('select[name="hora_checkout_hora"]').value;
+    const checkoutMinuto = document.querySelector('select[name="hora_checkout_minuto"]').value;
+    const checkoutHidden = document.getElementById('hora_checkout_hidden');
+    checkoutHidden.value = checkoutHora.padStart(2, '0') + ':' + checkoutMinuto;
+    }
+
+    // Adicionar event listeners aos selects de hora
+    document.querySelectorAll('select[name*="hora_checkin"], select[name*="hora_checkout"]').forEach(select => {
+    select.addEventListener('change', updateTimeFields);
+    });
+
+    // Inicializar valores
+    updateTimeFields();
+    });
+    </script>
+</body>
+
+</html>
