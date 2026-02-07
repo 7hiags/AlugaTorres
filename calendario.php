@@ -296,121 +296,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     }
                 });
 
-                // Máscara de data DD/MM/YYYY com formatação automática
-                function formatDateInput(input) {
-                    let value = input.value.replace(/\D/g, ''); // Remove tudo que não é dígito
 
-                    // Limita a 8 dígitos (DDMMYYYY)
-                    if (value.length > 8) {
-                        value = value.substring(0, 8);
-                    }
-
-                    let formatted = '';
-
-                    // Adiciona dia (2 dígitos)
-                    if (value.length >= 1) {
-                        let day = value.substring(0, 2);
-                        // Validação básica do dia (máximo 31)
-                        if (day.length === 2 && parseInt(day) > 31) {
-                            day = '31';
-                        }
-                        formatted = day;
-                    }
-
-                    // Adiciona mês (2 dígitos) com barra
-                    if (value.length >= 3) {
-                        let month = value.substring(2, 4);
-                        // Validação básica do mês (máximo 12)
-                        if (month.length === 2 && parseInt(month) > 12) {
-                            month = '12';
-                        }
-                        formatted += '/' + month;
-                    }
-
-                    // Adiciona ano (4 dígitos) com barra
-                    if (value.length >= 5) {
-                        let year = value.substring(4, 8);
-                        formatted += '/' + year;
-                    }
-
-                    // Atualiza o valor do input
-                    input.value = formatted;
-                }
-
-                // Evento de input para formatação em tempo real
-                document.getElementById('checkinDate').addEventListener('input', function(e) {
-                    formatDateInput(e.target);
-                });
-
-                document.getElementById('checkoutDate').addEventListener('input', function(e) {
-                    formatDateInput(e.target);
-                });
-
-                // Validação ao sair do campo (blur)
-                document.getElementById('checkinDate').addEventListener('blur', function(e) {
-                    validateDate(e.target);
-                });
-
-                document.getElementById('checkoutDate').addEventListener('blur', function(e) {
-                    validateDate(e.target);
-                });
-
-                // Função de validação completa da data
-                function validateDate(input) {
-                    const value = input.value;
-                    const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
-
-                    if (!value) return;
-
-                    if (!regex.test(value)) {
-                        input.style.borderColor = '#dc3545';
-                        return;
-                    }
-
-                    const match = value.match(regex);
-                    const day = parseInt(match[1], 10);
-                    const month = parseInt(match[2], 10);
-                    const year = parseInt(match[3], 10);
-
-                    // Validações
-                    if (month < 1 || month > 12) {
-                        input.style.borderColor = '#dc3545';
-                        return;
-                    }
-
-                    const daysInMonth = new Date(year, month, 0).getDate();
-                    if (day < 1 || day > daysInMonth) {
-                        input.style.borderColor = '#dc3545';
-                        return;
-                    }
-
-                    // Data válida - borda verde
-                    input.style.borderColor = '#28a745';
-                }
-
-                // Prevenir backspace em posições de barra
-                document.getElementById('checkinDate').addEventListener('keydown', function(e) {
-                    if (e.key === 'Backspace') {
-                        const value = e.target.value;
-                        const cursorPos = e.target.selectionStart;
-                        // Se o cursor está logo após uma barra, pula a barra
-                        if (cursorPos > 0 && value[cursorPos - 1] === '/') {
-                            e.preventDefault();
-                            e.target.setSelectionRange(cursorPos - 1, cursorPos - 1);
-                        }
-                    }
-                });
-
-                document.getElementById('checkoutDate').addEventListener('keydown', function(e) {
-                    if (e.key === 'Backspace') {
-                        const value = e.target.value;
-                        const cursorPos = e.target.selectionStart;
-                        if (cursorPos > 0 && value[cursorPos - 1] === '/') {
-                            e.preventDefault();
-                            e.target.setSelectionRange(cursorPos - 1, cursorPos - 1);
-                        }
-                    }
-                });
 
             }
 
@@ -1358,9 +1244,14 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             const nights = Math.ceil((checkoutDate - checkinDate) / (1000 * 60 * 60 * 24));
 
             if (nights <= 0) {
-                alert('Data de checkout deve ser após data de checkin');
+                if (typeof AlugaTorresNotifications !== 'undefined') {
+                    AlugaTorresNotifications.warning('Data de checkout deve ser após data de checkin');
+                } else {
+                    alert('Data de checkout deve ser após data de checkin');
+                }
                 return;
             }
+
 
             try {
                 // Obter preços e disponibilidade (usar formato YYYY-MM-DD)
@@ -1368,9 +1259,14 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 const data = await response.json();
 
                 if (data.error) {
-                    alert(data.error);
+                    if (typeof AlugaTorresNotifications !== 'undefined') {
+                        AlugaTorresNotifications.error(data.error);
+                    } else {
+                        alert(data.error);
+                    }
                     return;
                 }
+
 
                 // Obter informações meteorológicas para as datas selecionadas (usar chaves ISO)
                 let weatherInfo = '';
@@ -1475,12 +1371,8 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             }
 
 
-            if (!confirm('Confirmar reserva?')) {
-                console.log('Usuário cancelou a confirmação');
-                return;
-            }
-
             const requestBody = {
+
                 action: 'create',
                 casa_id: casaId,
                 checkin: checkin,
@@ -1510,9 +1402,14 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     data = JSON.parse(responseText);
                 } catch (e) {
                     console.error('Erro ao parsear JSON:', e);
-                    alert('Erro: Resposta inválida do servidor');
+                    if (typeof AlugaTorresNotifications !== 'undefined') {
+                        AlugaTorresNotifications.error('Erro: Resposta inválida do servidor');
+                    } else {
+                        alert('Erro: Resposta inválida do servidor');
+                    }
                     return;
                 }
+
 
                 console.log('Dados parseados:', data);
 
