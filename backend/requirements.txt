@@ -1,0 +1,8 @@
+flask
+flask-cors
+requests
+requests-cache
+retry-requests
+openmeteo-requests
+pandas
+numpy

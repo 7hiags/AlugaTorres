@@ -1,0 +1,6 @@
+[2026-02-06 22:12:53] STATUS=failed-mail TO=thiagosilvauha@gmail.com SUBJECT=Recebemos a sua mensagem - AlugaTorres
+<p>Olá Thirrasgo,</p><p>Recebemos a sua mensagem com o assunto <strong>aacvf</strong>. Vamos responder o mais rápido possível.</p><p>Resumo da mensagem:<br>cvsvwg</p><p>Obrigado,<br>Equipe AlugaTorres</p>
+
+[2026-02-06 22:12:55] STATUS=failed-mail TO=suportealugatorres@gmail.com SUBJECT=Novo contacto recebido
+<p>Foi recebida uma nova mensagem de contacto:</p><p><strong>Nome:</strong> Thirrasgo<br><strong>Email:</strong> thiagosilvauha@gmail.com<br><strong>Assunto:</strong> aacvf</p><p><strong>Mensagem:</strong><br>cvsvwg</p>
+

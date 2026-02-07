@@ -46,46 +46,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $start_date = "$ano-$mes-01";
     $end_date = date('Y-m-t', strtotime($start_date));
 
-    $query = $conn->prepare("
-        SELECT
-            c.data,
-            c.disponivel,
-            c.preco_especial,
-            c.bloqueio_proprietario,
-            c.reserva_id,
-            r.status as reserva_status,
-            b.id as bloqueio_id
-        FROM calendario_disponibilidade c
-        LEFT JOIN reservas r ON c.reserva_id = r.id
-        LEFT JOIN bloqueios b ON b.casa_id = c.casa_id AND b.data = c.data AND b.tipo = 'proprietario'
-        WHERE c.casa_id = ?
-        AND c.data BETWEEN ? AND ?
-        ORDER BY c.data
-    ");
-
-    $query->bind_param("iss", $casa_id, $start_date, $end_date);
-    $query->execute();
-    $result = $query->get_result();
-
     $availability = [];
 
-    while ($row = $result->fetch_assoc()) {
-        $status = 'available';
+    // Gerar todas as datas do mês
+    $current = new DateTime($start_date);
+    $end = new DateTime($end_date);
+    $interval = new DateInterval('P1D');
+    $period = new DatePeriod($current, $interval, $end->modify('+1 day'));
 
-        if ($row['reserva_id']) {
-            $status = 'reserved';
-        } elseif ($row['bloqueio_proprietario']) {
-            $status = 'blocked';
-        } elseif (!$row['disponivel']) {
-            $status = 'unavailable';
-        }
-
-        $availability[$row['data']] = [
-            'status' => $status,
-            'special_price' => $row['preco_especial'],
-            'reserva_id' => $row['reserva_id'],
-            'reserva_status' => $row['reserva_status']
+    foreach ($period as $date) {
+        $date_str = $date->format('Y-m-d');
+        $availability[$date_str] = [
+            'status' => 'available',
+            'special_price' => null,
+            'reserva_id' => null,
+            'reserva_status' => null
         ];
+    }
+
+    // Obter reservas para o mês
+    $stmt = $conn->prepare("
+        SELECT data_checkin, data_checkout, status, id as reserva_id
+        FROM reservas
+        WHERE casa_id = ? AND status IN ('confirmada', 'pendente')
+        AND (
+            (data_checkin <= ? AND data_checkout >= ?) OR
+            (data_checkin >= ? AND data_checkin <= ?) OR
+            (data_checkout >= ? AND data_checkout <= ?)
+        )
+    ");
+    $stmt->bind_param("issssss", $casa_id, $end_date, $start_date, $start_date, $end_date, $start_date, $end_date);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    while ($row = $result->fetch_assoc()) {
+        $checkin = new DateTime($row['data_checkin']);
+        $checkout = new DateTime($row['data_checkout']);
+        $period = new DatePeriod($checkin, $interval, $checkout);
+
+        foreach ($period as $date) {
+            $date_str = $date->format('Y-m-d');
+            if (isset($availability[$date_str])) {
+                $availability[$date_str]['status'] = 'reserved';
+                $availability[$date_str]['reserva_id'] = $row['reserva_id'];
+                $availability[$date_str]['reserva_status'] = $row['status'];
+            }
+        }
+    }
+
+    // Obter bloqueios para o mês
+    $stmt = $conn->prepare("
+        SELECT data_inicio, data_fim
+        FROM bloqueios
+        WHERE casa_id = ? AND (
+            (data_inicio <= ? AND data_fim >= ?) OR
+            (data_inicio >= ? AND data_inicio <= ?) OR
+            (data_fim >= ? AND data_fim <= ?)
+        )
+    ");
+    $stmt->bind_param("issssss", $casa_id, $end_date, $start_date, $start_date, $end_date, $start_date, $end_date);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    while ($row = $result->fetch_assoc()) {
+        $inicio = new DateTime($row['data_inicio']);
+        $fim = new DateTime($row['data_fim']);
+        $fim->modify('+1 day');
+        $period = new DatePeriod($inicio, $interval, $fim);
+
+        foreach ($period as $date) {
+            $date_str = $date->format('Y-m-d');
+            if (isset($availability[$date_str]) && $availability[$date_str]['status'] !== 'reserved') {
+                $availability[$date_str]['status'] = 'blocked';
+            }
+        }
     }
 
     echo json_encode($availability);
@@ -127,13 +161,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 unblockDates($conn, $casa_id, $dates);
                 break;
 
-            case 'special_price':
-            case 'special_price_single':
-                $dates = $action === 'special_price_single' ? [$data['date']] : $data['dates'];
-                $price = $data['price'] ? (float)$data['price'] : null;
-                setSpecialPrice($conn, $casa_id, $dates, $price);
-                break;
-
             default:
                 echo json_encode(['error' => 'Ação inválida']);
                 exit;
@@ -148,36 +175,18 @@ function blockDates($conn, $casa_id, $dates)
 {
     try {
         foreach ($dates as $date) {
-            // Verificar se já existe bloqueio
-            $check = $conn->prepare("SELECT id FROM bloqueios WHERE casa_id = ? AND data = ?");
+            // Verificar se já existe bloqueio para esta data
+            $check = $conn->prepare("SELECT id FROM bloqueios WHERE casa_id = ? AND ? BETWEEN data_inicio AND data_fim");
             $check->bind_param("is", $casa_id, $date);
             $check->execute();
             $check->store_result();
 
             if ($check->num_rows === 0) {
-                // Inserir bloqueio
-                $stmt = $conn->prepare("INSERT INTO bloqueios (casa_id, data, tipo) VALUES (?, ?, 'proprietario')");
-                $stmt->bind_param("is", $casa_id, $date);
+                // Inserir bloqueio (data única = início e fim iguais)
+                $stmt = $conn->prepare("INSERT INTO bloqueios (casa_id, data_inicio, data_fim, criado_por) VALUES (?, ?, ?, ?)");
+                $stmt->bind_param("issi", $casa_id, $date, $date, $_SESSION['user_id']);
                 $stmt->execute();
             }
-
-            // Atualizar ou inserir na tabela calendario_disponibilidade
-            $check_cal = $conn->prepare("SELECT id FROM calendario_disponibilidade WHERE casa_id = ? AND data = ?");
-            $check_cal->bind_param("is", $casa_id, $date);
-            $check_cal->execute();
-            $check_cal->store_result();
-
-            if ($check_cal->num_rows > 0) {
-                // Atualizar
-                $stmt_cal = $conn->prepare("UPDATE calendario_disponibilidade SET disponivel = 0, bloqueio_proprietario = 1, reserva_id = NULL WHERE casa_id = ? AND data = ?");
-                $stmt_cal->bind_param("is", $casa_id, $date);
-            } else {
-                // Inserir novo
-                $stmt_cal = $conn->prepare("INSERT INTO calendario_disponibilidade (casa_id, data, disponivel, bloqueio_proprietario) VALUES (?, ?, 0, 1)");
-                $stmt_cal->bind_param("is", $casa_id, $date);
-            }
-
-            $stmt_cal->execute();
         }
 
         echo json_encode(['success' => true]);
@@ -188,42 +197,16 @@ function blockDates($conn, $casa_id, $dates)
 
 function unblockDates($conn, $casa_id, $dates)
 {
-    foreach ($dates as $date) {
-        // Remover bloqueio da tabela bloqueios
-        $stmt_block = $conn->prepare("DELETE FROM bloqueios WHERE casa_id = ? AND data = ? AND tipo = 'proprietario'");
-        $stmt_block->bind_param("is", $casa_id, $date);
-        $stmt_block->execute();
-
-        // Atualizar calendario_disponibilidade
-        $stmt = $conn->prepare("UPDATE calendario_disponibilidade SET disponivel = 1, bloqueio_proprietario = 0 WHERE casa_id = ? AND data = ?");
-        $stmt->bind_param("is", $casa_id, $date);
-        $stmt->execute();
-    }
-
-    echo json_encode(['success' => true]);
-}
-
-function setSpecialPrice($conn, $casa_id, $dates, $price)
-{
-    foreach ($dates as $date) {
-        // Verificar se já existe registro
-        $check = $conn->prepare("SELECT id FROM calendario_disponibilidade WHERE casa_id = ? AND data = ?");
-        $check->bind_param("is", $casa_id, $date);
-        $check->execute();
-        $check->store_result();
-
-        if ($check->num_rows > 0) {
-            // Atualizar
-            $stmt = $conn->prepare("UPDATE calendario_disponibilidade SET preco_especial = ? WHERE casa_id = ? AND data = ?");
-            $stmt->bind_param("dis", $price, $casa_id, $date);
-        } else {
-            // Inserir novo
-            $stmt = $conn->prepare("INSERT INTO calendario_disponibilidade (casa_id, data, preco_especial) VALUES (?, ?, ?)");
-            $stmt->bind_param("isd", $casa_id, $date, $price);
+    try {
+        foreach ($dates as $date) {
+            // Remover bloqueio da tabela bloqueios (onde a data está no intervalo)
+            $stmt_block = $conn->prepare("DELETE FROM bloqueios WHERE casa_id = ? AND ? BETWEEN data_inicio AND data_fim");
+            $stmt_block->bind_param("is", $casa_id, $date);
+            $stmt_block->execute();
         }
 
-        $stmt->execute();
+        echo json_encode(['success' => true]);
+    } catch (Exception $e) {
+        echo json_encode(['error' => 'Erro ao desbloquear datas: ' . $e->getMessage()]);
     }
-
-    echo json_encode(['success' => true]);
 }

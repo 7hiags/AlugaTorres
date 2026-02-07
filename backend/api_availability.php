@@ -37,9 +37,9 @@ while ($row = $result->fetch_assoc()) {
     $period = new DatePeriod($checkin, $interval, $checkout);
 
     foreach ($period as $date) {
-        $data_str = $date->format('d-m-Y');
+        $data_str = $date->format('Y-m-d');
         $datas_reservadas[$data_str] = [
-            'status' => $row['status'],
+            'status' => 'reserved',
             'tipo' => 'reserva'
         ];
     }
@@ -68,9 +68,9 @@ while ($row = $result->fetch_assoc()) {
     $period = new DatePeriod($inicio, $interval, $fim->modify('+1 day'));
 
     foreach ($period as $date) {
-        $data_str = $date->format('d-m-Y');
+        $data_str = $date->format('Y-m-d');
         $datas_reservadas[$data_str] = [
-            'status' => 'bloqueado',
+            'status' => 'blocked',
             'tipo' => 'bloqueio'
         ];
     }

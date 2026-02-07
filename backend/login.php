@@ -50,11 +50,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       throw new Exception("Email não encontrado");
     }
   } catch (Exception $e) {
-    $error_message = addslashes($e->getMessage());
-    echo "<script>
-            alert('Erro no login: {$error_message}');
-            window.location.href = 'login.php';
-          </script>";
+    // Usar sistema de notificações toast
+    require_once 'notifications_helper.php';
+    setNotification('error', 'Erro no login: ' . $e->getMessage());
+    header("Location: login.php");
     exit;
   }
 }

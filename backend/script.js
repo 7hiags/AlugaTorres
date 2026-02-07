@@ -6,6 +6,11 @@ document.addEventListener("DOMContentLoaded", function () {
   const nextButton = document.querySelector(".next-button");
   const dotsContainer = document.querySelector(".slider-dots");
 
+  // Verificar se elementos do slider existem
+  if (!slider || slides.length === 0 || !dotsContainer) {
+    return; // Sair se não estiver na página com slider
+  }
+
   let currentSlide = 0;
   let slideInterval;
   const intervalTime = 4000; // Tempo entre slides (4 segundos)
@@ -282,7 +287,17 @@ document.addEventListener("DOMContentLoaded", function () {
 document.addEventListener("DOMContentLoaded", () => {
   const select = document.querySelector('select[name="tipo_propriedade"]');
   const campoOutro = document.getElementById("campo-outro");
+
+  // Verificar se elementos existem
+  if (!select || !campoOutro) {
+    return; // Sair se não estiver na página com este formulário
+  }
+
   const inputOutro = campoOutro.querySelector('input[name="outro_texto"]');
+
+  if (!inputOutro) {
+    return; // Sair se input não existir
+  }
 
   function controlarCampoOutro() {
     if (select.value === "outro") {

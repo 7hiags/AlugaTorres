@@ -25,8 +25,13 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 $user_type = $_SESSION['tipo_utilizador'] ?? 'arrendatario';
 
-// Obter ação da requisição
-$action = $_GET['action'] ?? $_POST['action'] ?? '';
+// Obter dados da requisição (suporta tanto JSON quanto POST tradicional)
+$inputJSON = file_get_contents('php://input');
+$input = json_decode($inputJSON, true) ?? [];
+
+// Obter ação da requisição (de JSON, POST ou GET)
+$action = $input['action'] ?? $_GET['action'] ?? $_POST['action'] ?? '';
+
 
 switch ($action) {
     case 'create':
@@ -77,7 +82,8 @@ function createReservation()
     }
 
     // Verificar se a casa existe
-    $stmt = $conn->prepare("SELECT id, proprietario_id, preco_noite, taxa_limpeza, taxa_seguranca FROM casas WHERE id = ?");
+    $stmt = $conn->prepare("SELECT id, proprietario_id, preco_noite, preco_limpeza, taxa_seguranca FROM casas WHERE id = ?");
+
     $stmt->bind_param("i", $casa_id);
     $stmt->execute();
     $casa = $stmt->get_result()->fetch_assoc();
@@ -106,8 +112,9 @@ function createReservation()
     // Criar reserva e marcar como confirmada (pagamento não obrigatório)
     $conn->begin_transaction();
 
-    $stmt = $conn->prepare("INSERT INTO reservas (casa_id, arrendatario_id, checkin, checkout, hospedes, preco_total, status, criado_em) VALUES (?, ?, ?, ?, ?, ?, 'confirmada', NOW())");
+    $stmt = $conn->prepare("INSERT INTO reservas (casa_id, arrendatario_id, data_checkin, data_checkout, hospedes, preco_total, status, criado_em) VALUES (?, ?, ?, ?, ?, ?, 'confirmada', NOW())");
     $stmt->bind_param("iissid", $casa_id, $user_id, $checkin, $checkout, $hospedes, $preco_total);
+
 
     if (!$stmt->execute()) {
         $conn->rollback();
@@ -117,34 +124,10 @@ function createReservation()
 
     $reserva_id = $conn->insert_id;
 
-    // Bloquear datas no calendário (checkin até dia anterior ao checkout)
+    // Commit da transação
     try {
-        $start = new DateTime($checkin);
-        $end = new DateTime($checkout);
-        $interval = new DateInterval('P1D');
-        $period = new DatePeriod($start, $interval, $end);
-
-        foreach ($period as $dt) {
-            $date = $dt->format('Y-m-d');
-
-            // Verificar se já existe registro
-            $check_cal = $conn->prepare("SELECT id FROM calendario_disponibilidade WHERE casa_id = ? AND data = ?");
-            $check_cal->bind_param("is", $casa_id, $date);
-            $check_cal->execute();
-            $res = $check_cal->get_result();
-
-            if ($res && $res->num_rows > 0) {
-                $stmt_cal = $conn->prepare("UPDATE calendario_disponibilidade SET disponivel = 0, reserva_id = ? WHERE casa_id = ? AND data = ?");
-                $stmt_cal->bind_param("iis", $reserva_id, $casa_id, $date);
-            } else {
-                $stmt_cal = $conn->prepare("INSERT INTO calendario_disponibilidade (casa_id, data, disponivel, reserva_id) VALUES (?, ?, 0, ?)");
-                $stmt_cal->bind_param("isi", $casa_id, $date, $reserva_id);
-            }
-
-            $stmt_cal->execute();
-        }
-
         $conn->commit();
+
 
         // Obter informações do arrendatário
         $userStmt = $conn->prepare("SELECT nome, utilizador, email FROM utilizadores WHERE id = ?");
@@ -219,10 +202,11 @@ function calculatePriceTotal($casa_id, $checkin, $checkout, $hospedes)
     global $conn;
 
     // Obter informações da casa
-    $stmt = $conn->prepare("SELECT preco_noite, taxa_limpeza, taxa_seguranca FROM casas WHERE id = ?");
+    $stmt = $conn->prepare("SELECT preco_noite, preco_limpeza, taxa_seguranca FROM casas WHERE id = ?");
     $stmt->bind_param("i", $casa_id);
     $stmt->execute();
     $casa = $stmt->get_result()->fetch_assoc();
+
 
     if (!$casa) {
         return ['error' => 'Casa não encontrada'];
@@ -242,8 +226,9 @@ function calculatePriceTotal($casa_id, $checkin, $checkout, $hospedes)
     $subtotal = $noites * $preco_noite;
 
     // Taxas
-    $taxa_limpeza = $casa['taxa_limpeza'] ?? 0;
+    $taxa_limpeza = $casa['preco_limpeza'] ?? 0;
     $taxa_seguranca = $casa['taxa_seguranca'] ?? 0;
+
 
     // Total
     $total = $subtotal + $taxa_limpeza + $taxa_seguranca;
@@ -267,12 +252,13 @@ function checkAvailability($casa_id, $checkin, $checkout)
         SELECT COUNT(*) as conflitos FROM reservas
         WHERE casa_id = ? AND status IN ('confirmada', 'pendente')
         AND (
-            (checkin <= ? AND checkout > ?) OR
-            (checkin < ? AND checkout >= ?) OR
-            (checkin >= ? AND checkout <= ?)
+            (data_checkin <= ? AND data_checkout > ?) OR
+            (data_checkin < ? AND data_checkout >= ?) OR
+            (data_checkin >= ? AND data_checkout <= ?)
         )
     ");
     $stmt->bind_param("issssss", $casa_id, $checkin, $checkin, $checkout, $checkout, $checkin, $checkout);
+
     $stmt->execute();
     $result = $stmt->get_result()->fetch_assoc();
 
@@ -353,11 +339,12 @@ function listAvailableHouses()
         SELECT 1 FROM reservas r
         WHERE r.casa_id = c.id AND r.status IN ('confirmada', 'pendente')
         AND (
-            (r.checkin <= ? AND r.checkout > ?) OR
-            (r.checkin < ? AND r.checkout >= ?) OR
-            (r.checkin >= ? AND r.checkout <= ?)
+            (r.data_checkin <= ? AND r.data_checkout > ?) OR
+            (r.data_checkin < ? AND r.data_checkout >= ?) OR
+            (r.data_checkin >= ? AND r.data_checkout <= ?)
         )
     )";
+
 
     array_push($params, $checkin, $checkin, $checkout, $checkout, $checkin, $checkout);
     $types .= "ssssss";
@@ -462,21 +449,21 @@ function blockDates()
 
     $success_count = 0;
     foreach ($dates as $date) {
-        // Verificar se já existe
-        $stmt = $conn->prepare("SELECT id FROM disponibilidade WHERE casa_id = ? AND data = ?");
+        // Verificar se já existe bloqueio para esta data
+        $stmt = $conn->prepare("SELECT id FROM bloqueios WHERE casa_id = ? AND ? BETWEEN data_inicio AND data_fim");
         $stmt->bind_param("is", $casa_id, $date);
         $stmt->execute();
         $existing = $stmt->get_result()->fetch_assoc();
 
-        if ($existing) {
-            $stmt = $conn->prepare("UPDATE disponibilidade SET status = 'blocked' WHERE id = ?");
-            $stmt->bind_param("i", $existing['id']);
-        } else {
-            $stmt = $conn->prepare("INSERT INTO disponibilidade (casa_id, data, status) VALUES (?, ?, 'blocked')");
-            $stmt->bind_param("is", $casa_id, $date);
-        }
+        if (!$existing) {
+            // Inserir bloqueio (data única = início e fim iguais)
+            $stmt = $conn->prepare("INSERT INTO bloqueios (casa_id, data_inicio, data_fim, criado_por) VALUES (?, ?, ?, ?)");
+            $stmt->bind_param("issi", $casa_id, $date, $date, $user_id);
 
-        if ($stmt->execute()) {
+            if ($stmt->execute()) {
+                $success_count++;
+            }
+        } else {
             $success_count++;
         }
     }
@@ -486,6 +473,7 @@ function blockDates()
         'message' => "$success_count datas bloqueadas"
     ]);
 }
+
 
 function unblockDates()
 {
@@ -522,7 +510,8 @@ function unblockDates()
 
     $success_count = 0;
     foreach ($dates as $date) {
-        $stmt = $conn->prepare("UPDATE disponibilidade SET status = 'available' WHERE casa_id = ? AND data = ?");
+        // Remover bloqueio da tabela bloqueios (onde a data está no intervalo)
+        $stmt = $conn->prepare("DELETE FROM bloqueios WHERE casa_id = ? AND ? BETWEEN data_inicio AND data_fim");
         $stmt->bind_param("is", $casa_id, $date);
 
         if ($stmt->execute()) {
