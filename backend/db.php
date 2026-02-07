@@ -1,7 +1,7 @@
 <?php
-// Habilita a exibição de erros para debug
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// Suppress errors to prevent HTML output in JSON responses
+error_reporting(0);
+ini_set('display_errors', 0);
 
 $host = "localhost";
 $user = "root";

@@ -268,17 +268,31 @@ document.addEventListener("DOMContentLoaded", function () {
       const preco = document.querySelector('input[name="preco_noite"]').value;
       if (parseFloat(preco) <= 0) {
         e.preventDefault();
-        alert("O preço por noite deve ser maior que zero.");
+        if (typeof AlugaTorresNotifications !== "undefined") {
+          AlugaTorresNotifications.error(
+            "O preço por noite deve ser maior que zero.",
+          );
+        } else {
+          alert("O preço por noite deve ser maior que zero.");
+        }
         return false;
       }
+
       const capacidade = document.querySelector(
         'input[name="capacidade"]',
       ).value;
       if (parseInt(capacidade) < 1) {
         e.preventDefault();
-        alert("A capacidade deve ser pelo menos 1 hóspede.");
+        if (typeof AlugaTorresNotifications !== "undefined") {
+          AlugaTorresNotifications.error(
+            "A capacidade deve ser pelo menos 1 hóspede.",
+          );
+        } else {
+          alert("A capacidade deve ser pelo menos 1 hóspede.");
+        }
         return false;
       }
+
       return true;
     });
   }
@@ -357,13 +371,23 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (novaSenha !== confirmarSenha) {
         e.preventDefault();
-        alert("As senhas não coincidem!");
+        if (typeof AlugaTorresNotifications !== "undefined") {
+          AlugaTorresNotifications.error("As senhas não coincidem!");
+        } else {
+          alert("As senhas não coincidem!");
+        }
         return false;
       }
 
       if (novaSenha.length < 6) {
         e.preventDefault();
-        alert("A senha deve ter pelo menos 6 caracteres!");
+        if (typeof AlugaTorresNotifications !== "undefined") {
+          AlugaTorresNotifications.error(
+            "A senha deve ter pelo menos 6 caracteres!",
+          );
+        } else {
+          alert("A senha deve ter pelo menos 6 caracteres!");
+        }
         return false;
       }
 

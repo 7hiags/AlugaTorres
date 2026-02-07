@@ -1,4 +1,8 @@
 <?php
+// Suppress PHP errors to prevent HTML output in JSON responses
+ini_set('display_errors', 0);
+error_reporting(0);
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
@@ -82,7 +86,7 @@ function createReservation()
     }
 
     // Verificar se a casa existe
-    $stmt = $conn->prepare("SELECT id, proprietario_id, preco_noite, preco_limpeza, taxa_seguranca FROM casas WHERE id = ?");
+    $stmt = $conn->prepare("SELECT id, proprietario_id, preco_noite, preco_limpeza, taxa_seguranca, titulo FROM casas WHERE id = ?");
 
     $stmt->bind_param("i", $casa_id);
     $stmt->execute();
@@ -112,8 +116,9 @@ function createReservation()
     // Criar reserva e marcar como confirmada (pagamento não obrigatório)
     $conn->begin_transaction();
 
-    $stmt = $conn->prepare("INSERT INTO reservas (casa_id, arrendatario_id, data_checkin, data_checkout, hospedes, preco_total, status, criado_em) VALUES (?, ?, ?, ?, ?, ?, 'confirmada', NOW())");
+    $stmt = $conn->prepare("INSERT INTO reservas (casa_id, arrendatario_id, data_checkin, data_checkout, total_hospedes, preco_total, status, criado_em) VALUES (?, ?, ?, ?, ?, ?, 'confirmada', NOW())");
     $stmt->bind_param("iissid", $casa_id, $user_id, $checkin, $checkout, $hospedes, $preco_total);
+
 
 
     if (!$stmt->execute()) {

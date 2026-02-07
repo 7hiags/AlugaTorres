@@ -1,6 +1,8 @@
 <?php
 require_once 'db.php';
+require_once 'notifications_helper.php';
 session_start();
+
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
@@ -41,18 +43,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user_id'] = $id;
         $_SESSION['tipo_utilizador'] = $tipo_utilizador;
 
+        // Notificação de sucesso no login
+        notifySuccess('Bem-vindo de volta, ' . htmlspecialchars($user) . '! Login realizado com sucesso.');
+
         header("Location: ../index.php");
         exit;
       } else {
+
         throw new Exception("Senha incorreta");
       }
     } else {
       throw new Exception("Email não encontrado");
     }
   } catch (Exception $e) {
-    // Usar sistema de notificações toast
-    require_once 'notifications_helper.php';
-    setNotification('error', 'Erro no login: ' . $e->getMessage());
+    // Usar sistema de notificações toast - mostrar motivo específico do erro
+    notifyError('Erro no login: ' . $e->getMessage());
     header("Location: login.php");
     exit;
   }

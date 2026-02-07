@@ -1,9 +1,11 @@
 <?php
 require_once 'db.php';
 require_once __DIR__ . '/email_utils.php';
+require_once __DIR__ . '/notifications_helper.php';
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
+
 
 // Se já estiver logado, redireciona
 if (isset($_SESSION['user'])) {
@@ -31,15 +33,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Validações básicas
     if (empty($user) || empty($email) || empty($pass)) {
-        $error = "Todos os campos são obrigatórios!";
+        notifyError("Todos os campos são obrigatórios!");
+        header("Location: registro.php?tipo_utilizador=$tipo");
+        exit;
     } elseif ($email !== $confirm_email) {
-        $error = "Os emails não coincidem!";
+        notifyError("Os emails não coincidem!");
+        header("Location: registro.php?tipo_utilizador=$tipo");
+        exit;
     } elseif ($pass !== $confirm_pass) {
-        $error = "As palavras-passe não coincidem!";
+        notifyError("As palavras-passe não coincidem!");
+        header("Location: registro.php?tipo_utilizador=$tipo");
+        exit;
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = "Email inválido!";
+        notifyError("Email inválido! Verifique o formato do email.");
+        header("Location: registro.php?tipo_utilizador=$tipo");
+        exit;
     } elseif (strlen($pass) < 8) {
-        $error = "A palavra-passe deve ter pelo menos 8 caracteres!";
+        notifyError("A palavra-passe deve ter pelo menos 8 caracteres!");
+        header("Location: registro.php?tipo_utilizador=$tipo");
+        exit;
     } else {
         // Verifica se o email já existe
         $check = $conn->prepare("SELECT id FROM utilizadores WHERE email = ?");
@@ -48,8 +60,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $check->store_result();
 
         if ($check->num_rows > 0) {
-            $error = "Este email já está registado!";
+            notifyError("Este email já está registado! Use outro email ou faça login.");
+            header("Location: registro.php?tipo_utilizador=$tipo");
+            exit;
         } else {
+
             // Hash da palavra-passe
             $hash = password_hash($pass, PASSWORD_DEFAULT);
 
@@ -64,6 +79,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['email'] = $email;
                 $_SESSION['user_id'] = $user_id;
                 $_SESSION['tipo_utilizador'] = $tipo;
+
+                // Notificação de sucesso
+                notifySuccess('Bem-vindo ao AlugaTorres, ' . htmlspecialchars($user) . '! Registo realizado com sucesso.');
 
                 // Enviar email de boas-vindas ao novo utilizador
                 $subjectUser = 'Bem-vindo ao AlugaTorres';
@@ -100,7 +118,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 exit;
             } else {
-                $error = "Erro ao registar utilizador: " . $conn->error;
+                notifyError("Erro ao registar utilizador: " . $conn->error);
+                header("Location: registro.php?tipo_utilizador=$tipo");
+                exit;
             }
         }
     }
@@ -142,11 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </p>
         </div>
 
-        <?php if (isset($error)): ?>
-            <div class="message error">
-                <?php echo htmlspecialchars($error); ?>
-            </div>
-        <?php endif; ?>
+
 
         <form class="registro" method="POST">
             <input type="hidden" name="tipo_utilizador" value="<?php echo htmlspecialchars($tipo_utilizador); ?>">
