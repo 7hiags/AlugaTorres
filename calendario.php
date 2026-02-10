@@ -156,8 +156,6 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                             <p>Carregando meteorologia...</p>
                         </div>
                     </div>
-
-
                 </div>
 
                 <?php if ($tipo_utilizador === 'arrendatario' && $casa_id): ?>
