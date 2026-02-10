@@ -298,13 +298,14 @@ header h1 {
     cursor: pointer;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.06);
-    padding: 6px;
+    padding: 8px;
     z-index: 1001;
     width: 44px;
-    height: 36px;
-    border-radius: 8px;
+    height: 44px;
+    border-radius: 50%;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
 }
 
 .hamburger:focus {
@@ -313,12 +314,13 @@ header h1 {
 }
 
 .bar {
-    width: 22px;
-    height: 2.5px;
+    width: 24px;
+    height: 3px;
     background-color: white;
     margin: 3px 0;
     transition: transform 0.25s ease, opacity 0.25s ease;
     border-radius: 2px;
+    display: block;
 }
 
 .hamburger.active .bar:nth-child(1) {
@@ -337,7 +339,7 @@ header h1 {
 /* Ensure hamburger stays a reasonable size on smaller headers */
 @media (max-width: 768px) {
     .hamburger {
-        width: 40px;
+        width: 20px;
         height: 34px;
         padding: 6px;
         border-radius: 6px;
@@ -889,16 +891,8 @@ section.about-us .about-cta a,
     font-weight: bold;
 }
 
-/* Botões unificados: .book-button como padrão para todo o site
-   Exclui o hamburger e o close-sidebar para preservar seus estilos específicos */
-.book-button,
-button,
-input[type="submit"],
-a.book-button,
-.primary-button,
-.secondary-button,
-.auth-button,
-.newsletter-form button {
+/* Botões separados para evitar conflitos - Book Button */
+.book-button {
     background: linear-gradient(90deg, #038e01, #00d85e);
     color: white;
     border: none;
@@ -918,47 +912,204 @@ a.book-button,
     font-size: 0.95rem;
     line-height: 1.1;
     box-sizing: border-box;
-    /* evitar quebras: */
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 140px;
-    max-width: 100%;
 }
 
-.book-button:hover,
-button:hover,
-a.book-button:hover,
-.primary-button:hover,
-.secondary-button:hover,
-.auth-button:hover,
-.newsletter-form button:hover {
+.book-button:hover {
     background: #00d85e;
     transform: translateY(-3px);
     box-shadow: 0 14px 36px rgba(0, 216, 94, 0.18);
 }
 
-/* Secondary buttons: inverted look but same sizing */
+a.book-button {
+    background: linear-gradient(90deg, #038e01, #00d85e);
+    color: white;
+    border: none;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 28px;
+    cursor: pointer;
+    transition: transform .16s ease, box-shadow .16s ease;
+    box-shadow: 0 10px 24px rgba(0, 216, 94, 0.14);
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: none;
+    font-size: 0.95rem;
+    line-height: 1.1;
+    box-sizing: border-box;
+}
+
+a.book-button:hover {
+    background: #00d85e;
+    transform: translateY(-3px);
+    box-shadow: 0 14px 36px rgba(0, 216, 94, 0.18);
+}
+
+button {
+    background: linear-gradient(90deg, #038e01, #00d85e);
+    color: white;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 28px;
+    cursor: pointer;
+    transition: transform .16s ease, box-shadow .16s ease;
+    box-shadow: 0 10px 24px rgba(0, 216, 94, 0.14);
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: none;
+    font-size: 0.95rem;
+    line-height: 1.1;
+    box-sizing: border-box;
+}
+
+button:hover {
+    background: #00d85e;
+    transform: translateY(-3px);
+    box-shadow: 0 14px 36px rgba(0, 216, 94, 0.18);
+}
+
+input[type="submit"] {
+    background: linear-gradient(90deg, #038e01, #00d85e);
+    color: white;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 28px;
+    cursor: pointer;
+    transition: transform .16s ease, box-shadow .16s ease;
+    box-shadow: 0 10px 24px rgba(0, 216, 94, 0.14);
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: none;
+    font-size: 0.95rem;
+    line-height: 1.1;
+    box-sizing: border-box;
+}
+
+input[type="submit"]:hover {
+    background: #00d85e;
+    transform: translateY(-3px);
+    box-shadow: 0 14px 36px rgba(0, 216, 94, 0.18);
+}
+
+/* Primary Button */
+.primary-button,
+.primary-button:link,
+.primary-button:visited {
+    background: linear-gradient(90deg, #038e01, #00d85e);
+    color: white;
+    padding: 12px 26px;
+    border-radius: 30px;
+    text-decoration: none;
+    box-shadow: 0 10px 28px rgba(0, 216, 94, 0.16);
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    transition: transform .18s ease, box-shadow .18s ease;
+    display: inline-block;
+    border: none;
+    cursor: pointer;
+}
+
+.primary-button:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(0, 216, 94, 0.22);
+}
+
+/* Secondary Button */
 .secondary-button {
-    background: rgb(0, 0, 0);
+    background: white;
     color: #038e01;
+    padding: 12px 22px;
+    border-radius: 30px;
     border: 2px solid rgba(3, 142, 1, 0.12);
+    text-decoration: none;
+    font-weight: 700;
     box-shadow: 0 6px 16px rgba(3, 142, 1, 0.04);
+    display: inline-block;
+    cursor: pointer;
 }
 
 .secondary-button:hover {
-    background: #000000;
-    color: #038e01;
+    background: #f3fff4;
     transform: translateY(-3px);
 }
 
-/* Auth button should be slightly smaller */
+/* Auth Button */
 .auth-button {
-    padding: 8px 16px;
-    min-width: 0;
-    border-radius: 22px;
-    font-weight: 700;
+    color: white;
+    text-decoration: none;
+    padding: 10px 15px;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     white-space: nowrap;
+    font-size: 0.9rem;
+    height: 32px;
+    box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.9);
+    color: #038e01;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+}
+
+.auth-button.login {
+    background-color: rgba(255, 255, 255, 0.9);
+    color: #038e01;
+    font-weight: 600;
+}
+
+.auth-button.logout {
+    background-color: rgb(251, 0, 0);
+    border: 1px solid rgba(255, 0, 0, 0.3);
+    color: white;
+}
+
+.auth-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.auth-button.login:hover {
+    background-color: rgba(176, 176, 176, 0.315);
+}
+
+.auth-button.logout:hover {
+    background-color: rgba(255, 0, 0, 0.2);
+}
+
+/* Newsletter Button */
+.newsletter-form button {
+    background: #038e01;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.newsletter-form button:hover {
+    background: #00d85e;
+    transform: translateY(-2px);
 }
 
 /* Slider prev/next buttons consolidated later in file to avoid duplicates */
@@ -2148,7 +2299,7 @@ footer {
 
 .contact-form h3 i {
     margin-right: 10px;
-    color: #00d85e;
+    color: #038e01;
 }
 
 .form-group {
@@ -3202,12 +3353,14 @@ footer {
 .sidebar-item {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 15px;
     padding: 15px 0;
     text-decoration: none;
     color: #333;
     border-bottom: 1px solid #eee;
     transition: background 0.3s ease;
+    justify-content: flex-start;
+    flex-shrink: 0;
 }
 
 .sidebar-item:hover {
@@ -3220,6 +3373,16 @@ footer {
 
 .sidebar-item.logout:hover {
     background: #f2dede;
+}
+
+.sidebar-item i {
+    width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.sidebar-item span {
+    flex: 1;
 }
 
 /* Profile Button Styles */
@@ -3894,6 +4057,8 @@ textarea.form-control {
     display: inline-flex;
     align-items: center;
     gap: 3px;
+    background: linear-gradient(90deg, #038e01, #00d85e) !important;
+    color: white !important;
 }
 
 .btn-detalhes {
@@ -4102,7 +4267,8 @@ textarea.form-control {
 .filtro-btn {
     padding: 8px 20px;
     border: 1px solid #ddd;
-    background: white;
+    background: #f0f0f0;
+    color: #333;
     border-radius: 20px;
     cursor: pointer;
     transition: all 0.3s ease;
