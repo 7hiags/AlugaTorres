@@ -96,4 +96,3 @@ if (!isset($_GET['refreshed'])) {
 
     <!-- Renderizar notificações pendentes da sessão -->
     <?= renderPendingNotifications() ?>
-</body>

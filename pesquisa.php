@@ -3,13 +3,12 @@ session_start();
 require_once 'backend/db.php';
 
 // Buscar casas disponíveis
-$query = "SELECT c.*, u.utilizador as proprietario_nome,
-                 (SELECT AVG(classificacao) FROM avaliacoes WHERE casa_id = c.id) as avaliacao_media,
-                 (SELECT COUNT(*) FROM avaliacoes WHERE casa_id = c.id) as num_avaliacoes
+$query = "SELECT c.*, u.utilizador as proprietario_nome
           FROM casas c
           JOIN utilizadores u ON c.proprietario_id = u.id
           WHERE c.disponivel = 1
           ORDER BY c.id DESC";
+
 
 $result = $conn->query($query);
 $casas = [];
@@ -30,14 +29,14 @@ while ($casa = $result->fetch_assoc()) {
     'cidade' => $casa['cidade'],
     'tipo_propriedade' => $casa['tipo_propriedade'],
     'quartos' => $casa['quartos'],
+    'banheiros' => $casa['banheiros'],
+    'freguesia' => $casa['freguesia'],
     'capacidade' => $casa['capacidade'],
     'preco_noite' => $casa['preco_noite'],
     'preco_limpeza' => $casa['preco_limpeza'],
     'taxa_seguranca' => $casa['taxa_seguranca'],
     'comodidades' => $comodidades,
-    'proprietario_nome' => $casa['proprietario_nome'],
-    'avaliacao_media' => round($casa['avaliacao_media'] ?? 0, 1),
-    'num_avaliacoes' => $casa['num_avaliacoes'] ?? 0
+    'proprietario_nome' => $casa['proprietario_nome']
   ];
 }
 ?>
@@ -111,8 +110,10 @@ while ($casa = $result->fetch_assoc()) {
               <p class="card-description"><?php echo htmlspecialchars(substr($casa['descricao'], 0, 100)) . (strlen($casa['descricao']) > 100 ? '...' : ''); ?></p>
               <div class="card-features">
                 <span><i class="fas fa-bed"></i> <?php echo $casa['quartos']; ?> quartos</span>
+                <span><i class="fas fa-bath"></i> <?php echo $casa['banheiros']; ?> casas de banho</span>
                 <span><i class="fas fa-users"></i> Até <?php echo $casa['capacidade']; ?> pessoas</span>
                 <span><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($casa['cidade']); ?></span>
+                <span><i class="fas fa-home"></i> <?php echo htmlspecialchars($casa['freguesia']); ?></span>
               </div>
               <div class="card-price">
                 <span class="price">€<?php echo number_format($casa['preco_noite'], 2, ',', '.'); ?>/noite</span>
@@ -139,41 +140,6 @@ while ($casa = $result->fetch_assoc()) {
   <?php include 'footer.php'; ?>
 
   <script src="backend/script.js"></script>
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      const profileToggle = document.getElementById("profile-toggle");
-      const sidebar = document.getElementById("sidebar");
-      const sidebarOverlay = document.getElementById("sidebar-overlay");
-      const closeSidebar = document.getElementById("close-sidebar");
-
-      if (profileToggle) {
-        profileToggle.addEventListener("click", function(event) {
-          event.preventDefault();
-          event.stopPropagation();
-          sidebar.classList.toggle("active");
-          sidebarOverlay.classList.toggle("active");
-        });
-      }
-
-      if (closeSidebar) {
-        closeSidebar.addEventListener("click", function() {
-          sidebar.classList.remove("active");
-          sidebarOverlay.classList.remove("active");
-        });
-      }
-
-      // Close sidebar when clicking outside
-      document.addEventListener("click", function(event) {
-        if (
-          !sidebar.contains(event.target) &&
-          !profileToggle.contains(event.target)
-        ) {
-          sidebar.classList.remove("active");
-          sidebarOverlay.classList.remove("active");
-        }
-      });
-    });
-  </script>
 </body>
 
 </html>

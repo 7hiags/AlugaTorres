@@ -170,42 +170,6 @@ if (!$config) {
     </div>
 
     <script src="backend/script.js"></script>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const profileToggle = document.getElementById("profile-toggle");
-            const sidebar = document.getElementById("sidebar");
-            const sidebarOverlay = document.getElementById("sidebar-overlay");
-            const closeSidebar = document.getElementById("close-sidebar");
-
-            if (profileToggle) {
-                profileToggle.addEventListener("click", function(event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    sidebar.classList.toggle("active");
-                    sidebarOverlay.classList.toggle("active");
-                });
-            }
-
-            if (closeSidebar) {
-                closeSidebar.addEventListener("click", function() {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                });
-            }
-
-            // Close sidebar when clicking outside
-            document.addEventListener("click", function(event) {
-                if (
-                    !sidebar.contains(event.target) &&
-                    !profileToggle.contains(event.target)
-                ) {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                }
-            });
-        });
-    </script>
 </body>
 
 </html>

@@ -53,10 +53,10 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
     <link rel="website icon" type="png" href="style/img/Logo_AlugaTorres_branco.png">
 </head>
 
-
 <body>
     <?php include 'header.php'; ?>
     <?php include 'sidebar.php'; ?>
+
 
     <div class="calendar-container">
         <div class="calendar-header">
@@ -390,7 +390,11 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 day.classList.add('today');
             }
 
+            // Formatar data para YYYY-MM-DD
+            const dateStr = date.toISOString().split('T')[0];
 
+            // Armazenar a data como atributo data para fácil identificação
+            day.setAttribute('data-date', dateStr);
 
             // Número do dia
             const dayNumber = document.createElement('div');
@@ -398,8 +402,6 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             dayNumber.textContent = date.getDate();
             day.appendChild(dayNumber);
 
-            // Formatar data para YYYY-MM-DD
-            const dateStr = date.toISOString().split('T')[0];
 
             // Adicionar informação de disponibilidade
             if (availabilityData[dateStr]) {
@@ -418,11 +420,12 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     event.innerHTML = '<span class="event-indicator event-reservation"></span> Reservado';
                     day.appendChild(event);
                 } else if (status === 'blocked') {
-                    day.classList.add('disabled');
+                    day.classList.add('blocked');
                     const event = document.createElement('div');
                     event.className = 'day-events';
                     event.innerHTML = '<span class="event-indicator event-blocked"></span> Bloqueado';
                     day.appendChild(event);
+
                 } else if (status === 'available') {
                     day.classList.add('available');
                 }
@@ -620,11 +623,18 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
 
         async function loadAvailability() {
             try {
-                const response = await fetch(`backend/api_availability.php?casa_id=${casaId}&mes=${currentMonth}&ano=${currentYear}`);
+                // Adicionar timestamp para evitar cache
+                const timestamp = new Date().getTime();
+                const response = await fetch(`backend/api_availability.php?casa_id=${casaId}&mes=${currentMonth}&ano=${currentYear}&_=${timestamp}`);
                 if (!response.ok) throw new Error('Erro ao carregar disponibilidade');
 
                 const data = await response.json();
                 availabilityData = data;
+
+                // Limpar calendário completamente antes de regenerar
+                while (calendarGrid.children.length > 7) {
+                    calendarGrid.removeChild(calendarGrid.lastChild);
+                }
 
                 // Gerar calendário novamente para incluir disponibilidade
                 generateCalendar(currentMonth, currentYear);
@@ -638,6 +648,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 console.error('Erro ao carregar disponibilidade:', error);
             }
         }
+
 
 
         // Funções para proprietário
@@ -657,7 +668,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             const dates = datesInput.value.split(',');
 
             try {
-                const response = await fetch('backend/calendario_api.php', {
+                const response = await fetch('backend/api_availability.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -665,10 +676,11 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     body: JSON.stringify({
                         action: 'block',
                         casa_id: casaId,
-                        dates: dates,
-                        tipo_utiliador: tipoUtilizador
+                        dates: dates
                     })
                 });
+
+
 
                 const data = await response.json();
                 if (data.success) {
@@ -703,11 +715,10 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 return;
             }
 
-
             const dates = datesInput.value.split(',');
 
             try {
-                const response = await fetch('backend/calendario_api.php', {
+                const response = await fetch('backend/api_availability.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -715,8 +726,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     body: JSON.stringify({
                         action: 'unblock',
                         casa_id: casaId,
-                        dates: dates,
-                        tipo_utiliador: tipoUtilizador
+                        dates: dates
                     })
                 });
 
@@ -739,10 +749,10 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     alert('Erro ao desbloquear datas: ' + error.message);
                 }
             }
-
         }
 
         async function applySpecialPrice() {
+
             const priceInput = document.getElementById('specialPrice');
             const datesInput = document.getElementById('specialPriceDates');
 
@@ -760,7 +770,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             const price = priceInput.value || null;
 
             try {
-                const response = await fetch('backend/calendario_api.php', {
+                const response = await fetch('backend/api_availability.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -769,10 +779,11 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                         action: 'special_price',
                         casa_id: casaId,
                         dates: dates,
-                        price: price,
-                        tipo_utiliador: tipoUtilizador
+                        price: price
                     })
                 });
+
+
 
                 const data = await response.json();
                 if (data.success) {
@@ -804,17 +815,14 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             const selectedDays = document.querySelectorAll('.calendar-day.selected');
             selectedDays.forEach(day => day.classList.remove('selected'));
 
-            // Adicionar seleção ao dia clicado
-            const clickedDay = Array.from(calendarGrid.children).find(day => {
-                const dayNumber = day.querySelector('.day-number');
-                return dayNumber && parseInt(dayNumber.textContent) === date.getDate() &&
-                    !day.classList.contains('other-month');
-            });
+            // Adicionar seleção ao dia clicado usando o atributo data-date
+            const clickedDay = calendarGrid.querySelector(`.calendar-day[data-date="${dateStr}"]`);
 
             if (clickedDay) {
                 clickedDay.classList.add('selected');
                 selectedDate = dateStr;
             }
+
 
             // Atualizar sidebar com informações do dia selecionado
             updateSidebarForSelectedDay(date, dateStr);
@@ -959,18 +967,19 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             const isBlocked = availabilityData[dateStr] && availabilityData[dateStr].status === 'blocked';
 
             try {
-                const response = await fetch('backend/calendario_api.php', {
+                const response = await fetch('backend/api_availability.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        action: isBlocked ? 'unblock' : 'block',
+                        action: isBlocked ? 'unblock_single' : 'block_single',
                         casa_id: casaId,
-                        dates: [dateStr],
-                        tipo_utiliador: tipoUtilizador
+                        date: dateStr
                     })
                 });
+
+
 
                 const data = await response.json();
                 if (data.success) {
@@ -1000,7 +1009,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             const price = priceInput.value || null;
 
             try {
-                const response = await fetch('backend/calendario_api.php', {
+                const response = await fetch('backend/api_availability.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1009,10 +1018,11 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                         action: 'special_price',
                         casa_id: casaId,
                         dates: [dateStr],
-                        price: price,
-                        tipo_utiliador: tipoUtilizador
+                        price: price
                     })
                 });
+
+
 
                 const data = await response.json();
                 if (data.success) {
@@ -1418,9 +1428,14 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     document.getElementById('checkinDate').value = '';
                     document.getElementById('checkoutDate').value = '';
                     document.getElementById('reservationSummary').style.display = 'none';
-                    // Recarregar disponibilidade
-                    loadAvailability();
+                    // Limpar seleção atual
+                    selectedDate = null;
+                    const selectedDays = document.querySelectorAll('.calendar-day.selected');
+                    selectedDays.forEach(day => day.classList.remove('selected'));
+                    // Recarregar disponibilidade e atualizar calendário
+                    await loadAvailability();
                 } else {
+
                     if (typeof AlugaTorresNotifications !== 'undefined') {
                         AlugaTorresNotifications.error('Erro: ' + (data.error || 'Erro desconhecido'));
                     } else {
@@ -1440,41 +1455,9 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
         }
     </script>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const profileToggle = document.getElementById("profile-toggle");
-            const sidebar = document.getElementById("sidebar");
-            const sidebarOverlay = document.getElementById("sidebar-overlay");
-            const closeSidebar = document.getElementById("close-sidebar");
 
-            if (profileToggle) {
-                profileToggle.addEventListener("click", function(event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    sidebar.classList.toggle("active");
-                    sidebarOverlay.classList.toggle("active");
-                });
-            }
 
-            if (closeSidebar) {
-                closeSidebar.addEventListener("click", function() {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                });
-            }
 
-            // Close sidebar when clicking outside
-            document.addEventListener("click", function(event) {
-                if (
-                    !sidebar.contains(event.target) &&
-                    !profileToggle.contains(event.target)
-                ) {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                }
-            });
-        });
-    </script>
 </body>
 
 

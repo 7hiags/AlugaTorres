@@ -107,11 +107,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $hospedes = (int)($_POST['hospedes'] ?? 1);
 
         // Verificar se as datas são válidas
-        $data_checkin_date = new DateTime($chaeckin);
-        $data_checkout_date = new DateTime($data_checkout);
-        $hoje = new DateTime();
+        $data_checkin_date = new \DateTime($data_checkin);
+        $data_checkout_date = new \DateTime($data_checkout);
+        $hoje = new \DateTime();
 
         if ($data_checkin_date >= $data_checkout_date) {
+
+
             $error = 'Data de data_checkout deve ser posterior ao data_checkin';
         } elseif ($data_checkin_date < $hoje) {
             $error = 'Data de data_checkin não pode ser no passado';
@@ -165,19 +167,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute();
                 $casa = $stmt->get_result()->fetch_assoc();
 
-                $data_checkin_dt = new DateTime($data_checkin);
-                $data_checkout_dt = new DateTime($data_checkout);
+                // Calcular valores
+                $data_checkin_dt = new \DateTime($data_checkin);
+                $data_checkout_dt = new \DateTime($data_checkout);
+
                 $noites = $data_checkin_dt->diff($data_checkout_dt)->days;
-
                 $subtotal = $noites * $casa['preco_noite'];
-                $total = $subtotal + $casa['preco_limpeza'] + $casa['taxa_seguranca'];
+                $taxa_limpeza = $casa['preco_limpeza'] ?? 0;
+                $taxa_seguranca = $casa['taxa_seguranca'] ?? 0;
+                $total = $subtotal + $taxa_limpeza + $taxa_seguranca;
 
-                // Criar reserva
+
+                // Criar reserva - ajustado para estrutura correta da BD
                 $stmt = $conn->prepare("
-                    INSERT INTO reservas (casa_id, arrendatario_id, data_checkin, data_checkout, hospedes, preco_total, status)
-                    VALUES (?, ?, ?, ?, ?, ?, 'pendente')
+                    INSERT INTO reservas (casa_id, arrendatario_id, data_checkin, data_checkout, noites, total_hospedes, preco_noite, subtotal, taxa_limpeza, taxa_seguranca, total, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente')
                 ");
-                $stmt->bind_param("iissid", $casa_id_post, $user_id, $data_checkin, $data_checkout, $hospedes, $total);
+                $stmt->bind_param("iissiiddddd", $casa_id_post, $user_id, $data_checkin, $data_checkout, $noites, $hospedes, $casa['preco_noite'], $subtotal, $taxa_limpeza, $taxa_seguranca, $total);
+
 
                 if ($stmt->execute()) {
                     $success = 'Reserva criada com sucesso!';
@@ -213,7 +220,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bind_param("i", $reserva_id);
                 $stmt->execute();
                 break;
+
+            case 'eliminar':
+                $stmt = $conn->prepare("DELETE FROM reservas WHERE id = ?");
+                $stmt->bind_param("i", $reserva_id);
+                $stmt->execute();
+                break;
         }
+
 
         // Recarregar página
         header("Location: reservas.php" . ($casa_id ? "?casa_id=$casa_id" : ""));
@@ -230,6 +244,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>AlugaTorres | Reservas</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="../style/style.css">
+    <link rel="website icon" type="png" href="../style/img/Logo_AlugaTorres_branco.png">
 </head>
 
 <body>
@@ -345,11 +360,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </td>
                                 <td>
                                     <div class="reserva-datas">
-                                        <div><strong>Check-in:</strong> <?php echo date('d/m/Y', strtotime($reserva['data_data_checkin'])); ?></div>
-                                        <div><strong>Check-out:</strong> <?php echo date('d/m/Y', strtotime($reserva['data_data_checkout'])); ?></div>
+                                        <div><strong>Check-in:</strong> <?php echo date('d/m/Y', strtotime($reserva['data_checkin'])); ?></div>
+                                        <div><strong>Check-out:</strong> <?php echo date('d/m/Y', strtotime($reserva['data_checkout'])); ?></div>
                                         <div><strong>Noites:</strong> <?php echo $reserva['noites']; ?></div>
                                     </div>
                                 </td>
+
                                 <td>
                                     <span class="reserva-status status-<?php echo $reserva['status']; ?>">
                                         <?php
@@ -387,7 +403,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                                         <i class="fas fa-times"></i>
                                                     </button>
                                                 </form>
-                                            <?php elseif ($reserva['status'] === 'confirmada' && strtotime($reserva['data_data_checkout']) <= time()): ?>
+                                            <?php elseif ($reserva['status'] === 'confirmada' && strtotime($reserva['data_checkout']) <= time()): ?>
+
                                                 <form method="POST" style="display: inline;">
                                                     <input type="hidden" name="reserva_id" value="<?php echo $reserva['id']; ?>">
                                                     <input type="hidden" name="action" value="concluir">
@@ -411,7 +428,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <button class="acao-btn btn-mensagem" onclick="window.location.href='../mensagens.php?reserva_id=<?php echo $reserva['id']; ?>'">
                                             <i class="fas fa-envelope"></i>
                                         </button>
+
+                                        <button class="acao-btn btn-detalhes" onclick="if(confirm('Tem certeza que deseja ELIMINAR permanentemente esta reserva?')) { document.getElementById('delete-form-<?php echo $reserva['id']; ?>').submit(); }">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        <form id="delete-form-<?php echo $reserva['id']; ?>" method="POST" style="display: none;">
+                                            <input type="hidden" name="reserva_id" value="<?php echo $reserva['id']; ?>">
+                                            <input type="hidden" name="action" value="eliminar">
+                                        </form>
                                     </div>
+
                                 </td>
                             </tr>
                         <?php endwhile; ?>

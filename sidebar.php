@@ -1,6 +1,6 @@
 <?php
 // Base do projeto (XAMPP)
-$BASE_URL = '/alugatorres/';
+$BASE_URL = '/AlugaTorres/';
 
 // inicia sessão se ainda não existir
 if (session_status() === PHP_SESSION_NONE) {
@@ -10,12 +10,46 @@ if (session_status() === PHP_SESSION_NONE) {
 
 <!-- Sidebar -->
 <aside>
+    <style>
+        #sidebar {
+            position: fixed;
+            top: 0;
+            right: -350px;
+            width: 350px;
+            height: 100%;
+            background: white;
+            box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+            transition: right 0.3s ease;
+            z-index: 1001;
+            overflow-y: auto;
+        }
+
+        #sidebar.active {
+            right: 0;
+        }
+
+        #sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none;
+        }
+
+        #sidebar-overlay.active {
+            display: block;
+        }
+    </style>
     <div class="sidebar" id="sidebar">
 
         <div class="sidebar-header">
             <h3>Menu do Utilizador</h3>
             <button class="close-sidebar" id="close-sidebar">&times;</button>
         </div>
+
 
         <div class="sidebar-content">
 
