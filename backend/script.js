@@ -658,3 +658,104 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 });
+
+// Funcionalidade do Sidebar - Versão Robusta
+(function () {
+  "use strict";
+
+  function initSidebar() {
+    console.log("[Sidebar] === INICIANDO SIDEBAR ===");
+
+    const profileToggle = document.getElementById("profile-toggle");
+    const sidebar = document.getElementById("sidebar");
+    const sidebarOverlay = document.getElementById("sidebar-overlay");
+    const closeSidebar = document.getElementById("close-sidebar");
+
+    console.log("[Sidebar] profile-toggle:", profileToggle);
+    console.log("[Sidebar] sidebar:", sidebar);
+    console.log("[Sidebar] sidebar-overlay:", sidebarOverlay);
+    console.log("[Sidebar] close-sidebar:", closeSidebar);
+
+    // Verificar se elementos essenciais existem
+    if (!sidebar) {
+      console.log("[Sidebar] ERRO: Elemento #sidebar não encontrado");
+      return;
+    }
+    if (!sidebarOverlay) {
+      console.log("[Sidebar] ERRO: Elemento #sidebar-overlay não encontrado");
+      return;
+    }
+
+    console.log("[Sidebar] Elementos encontrados, configurando eventos...");
+
+    // Abrir sidebar ao clicar no botão de perfil
+    if (profileToggle) {
+      console.log("[Sidebar] Configurando click no profile-toggle");
+      profileToggle.addEventListener("click", function (e) {
+        console.log("[Sidebar] Click no profile-toggle!");
+        e.preventDefault();
+        e.stopPropagation();
+        sidebar.classList.toggle("active");
+        sidebarOverlay.classList.toggle("active");
+        console.log(
+          "[Sidebar] Estado ativo:",
+          sidebar.classList.contains("active"),
+        );
+      });
+    } else {
+      console.log("[Sidebar] AVISO: profile-toggle não encontrado");
+    }
+
+    // Fechar sidebar ao clicar no botão de fechar
+    if (closeSidebar) {
+      console.log("[Sidebar] Configurando click no close-sidebar");
+      closeSidebar.addEventListener("click", function (e) {
+        console.log("[Sidebar] Click no close-sidebar!");
+        e.preventDefault();
+        e.stopPropagation();
+        sidebar.classList.remove("active");
+        sidebarOverlay.classList.remove("active");
+      });
+    }
+
+    // Fechar sidebar ao clicar no overlay
+    sidebarOverlay.addEventListener("click", function () {
+      console.log("[Sidebar] Click no overlay");
+      sidebar.classList.remove("active");
+      sidebarOverlay.classList.remove("active");
+    });
+
+    // Fechar sidebar ao clicar fora (no documento)
+    document.addEventListener("click", function (e) {
+      if (
+        sidebar.classList.contains("active") &&
+        !sidebar.contains(e.target) &&
+        (!profileToggle || !profileToggle.contains(e.target))
+      ) {
+        console.log("[Sidebar] Click fora, fechando sidebar");
+        sidebar.classList.remove("active");
+        sidebarOverlay.classList.remove("active");
+      }
+    });
+
+    // Fechar sidebar ao pressionar ESC
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && sidebar.classList.contains("active")) {
+        console.log("[Sidebar] ESC pressionado, fechando sidebar");
+        sidebar.classList.remove("active");
+        sidebarOverlay.classList.remove("active");
+      }
+    });
+
+    console.log("[Sidebar] === SIDEBAR INICIALIZADO COM SUCESSO ===");
+  }
+
+  // Inicializar quando DOM estiver pronto
+  if (document.readyState === "loading") {
+    console.log("[Sidebar] DOM ainda carregando, aguardando DOMContentLoaded");
+    document.addEventListener("DOMContentLoaded", initSidebar);
+  } else {
+    console.log("[Sidebar] DOM já pronto, inicializando imediatamente");
+    initSidebar();
+  }
+})();

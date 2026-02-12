@@ -1,5 +1,7 @@
 <?php
+
 // Suppress PHP errors to prevent HTML output in JSON responses
+
 ini_set('display_errors', 0);
 error_reporting(0);
 
@@ -116,8 +118,10 @@ function createReservation()
     // Criar reserva e marcar como confirmada (pagamento não obrigatório)
     $conn->begin_transaction();
 
-    $stmt = $conn->prepare("INSERT INTO reservas (casa_id, arrendatario_id, data_checkin, data_checkout, total_hospedes, preco_total, status, criado_em) VALUES (?, ?, ?, ?, ?, ?, 'confirmada', NOW())");
-    $stmt->bind_param("iissid", $casa_id, $user_id, $checkin, $checkout, $hospedes, $preco_total);
+    // Usar valores detalhados do preco_info para corresponder à estrutura da BD
+    $stmt = $conn->prepare("INSERT INTO reservas (casa_id, arrendatario_id, data_checkin, data_checkout, noites, total_hospedes, preco_noite, subtotal, taxa_limpeza, taxa_seguranca, total, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmada')");
+    $stmt->bind_param("iissiiddddd", $casa_id, $user_id, $checkin, $checkout, $preco_info['noites'], $hospedes, $preco_info['preco_noite'], $preco_info['subtotal'], $preco_info['taxa_limpeza'], $preco_info['taxa_seguranca'], $preco_info['total']);
+
 
 
 
@@ -135,20 +139,21 @@ function createReservation()
 
 
         // Obter informações do arrendatário
-        $userStmt = $conn->prepare("SELECT nome, utilizador, email FROM utilizadores WHERE id = ?");
+        $userStmt = $conn->prepare("SELECT utilizador, email FROM utilizadores WHERE id = ?");
         $userStmt->bind_param("i", $user_id);
         $userStmt->execute();
         $userInfo = $userStmt->get_result()->fetch_assoc();
         $arrendatario_email = $userInfo['email'] ?? null;
-        $arrendatario_nome = $userInfo['nome'] ?? $userInfo['utilizador'] ?? 'Arrendatário';
+        $arrendatario_nome = $userInfo['utilizador'] ?? 'Arrendatário';
 
         // Obter informações do proprietário da casa
-        $propStmt = $conn->prepare("SELECT nome, utilizador, email FROM utilizadores WHERE id = ?");
+        $propStmt = $conn->prepare("SELECT utilizador, email FROM utilizadores WHERE id = ?");
         $propStmt->bind_param("i", $casa['proprietario_id']);
         $propStmt->execute();
         $propInfo = $propStmt->get_result()->fetch_assoc();
         $proprietario_email = $propInfo['email'] ?? null;
-        $proprietario_nome = $propInfo['nome'] ?? $propInfo['utilizador'] ?? 'Proprietário';
+        $proprietario_nome = $propInfo['utilizador'] ?? 'Proprietário';
+
 
         // Construir mensagens
         $tituloCasa = $casa['titulo'] ?? 'a propriedade';
@@ -178,9 +183,9 @@ function createReservation()
                 'proprietario' => $prop_sent
             ]
         ]);
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         $conn->rollback();
-        echo json_encode(['error' => 'Erro ao bloquear datas: ' . $e->getMessage()]);
+        echo json_encode(['error' => 'Erro ao criar reserva: ' . $e->getMessage()]);
     }
 }
 
@@ -218,8 +223,9 @@ function calculatePriceTotal($casa_id, $checkin, $checkout, $hospedes)
     }
 
     // Calcular noites
-    $checkin_date = new DateTime($checkin);
-    $checkout_date = new DateTime($checkout);
+    $checkin_date = new \DateTime($checkin);
+    $checkout_date = new \DateTime($checkout);
+
     $noites = $checkin_date->diff($checkout_date)->days;
 
     if ($noites <= 0) {
@@ -278,13 +284,15 @@ function listReservations()
 
     if ($tipo === 'proprietario' && $user_type === 'proprietario') {
         $stmt = $conn->prepare("
-            SELECT r.*, c.titulo as casa_titulo, u.nome as arrendatario_nome
+            SELECT r.*, c.titulo as casa_titulo, u.utilizador as arrendatario_nome
             FROM reservas r
             JOIN casas c ON r.casa_id = c.id
             JOIN utilizadores u ON r.arrendatario_id = u.id
             WHERE c.proprietario_id = ?
-            ORDER BY r.criado_em DESC
+            ORDER BY r.data_reserva DESC
         ");
+
+
         $stmt->bind_param("i", $user_id);
     } else {
         $stmt = $conn->prepare("
@@ -292,8 +300,9 @@ function listReservations()
             FROM reservas r
             JOIN casas c ON r.casa_id = c.id
             WHERE r.arrendatario_id = ?
-            ORDER BY r.criado_em DESC
+            ORDER BY r.data_reserva DESC
         ");
+
         $stmt->bind_param("i", $user_id);
     }
 
@@ -323,12 +332,13 @@ function listAvailableHouses()
     }
 
     $query = "
-        SELECT c.*, u.nome as proprietario_nome
+        SELECT c.*, u.utilizador as proprietario_nome
         FROM casas c
         JOIN utilizadores u ON c.proprietario_id = u.id
         WHERE c.status = 'ativa'
         AND c.capacidade_maxima >= ?
     ";
+
 
     $params = [$hospedes];
     $types = "i";
@@ -432,7 +442,7 @@ function blockDates()
 
     $casa_id = $data['casa_id'] ?? null;
     $dates = $data['dates'] ?? [];
-    $tipo_utiliador = $data['tipo_utiliador'] ?? 'proprietario';
+    $tipo_utilizador = $data['tipo_utilizador'] ?? 'proprietario';
 
     if (!$casa_id || empty($dates)) {
         echo json_encode(['error' => 'Dados obrigatórios faltando']);
@@ -440,7 +450,7 @@ function blockDates()
     }
 
     // Verificar se o usuário é o proprietário
-    if ($tipo_utiliador === 'proprietario') {
+    if ($tipo_utilizador === 'proprietario') {
         $stmt = $conn->prepare("SELECT proprietario_id FROM casas WHERE id = ?");
         $stmt->bind_param("i", $casa_id);
         $stmt->execute();
@@ -493,7 +503,7 @@ function unblockDates()
 
     $casa_id = $data['casa_id'] ?? null;
     $dates = $data['dates'] ?? [];
-    $tipo_utiliador = $data['tipo_utiliador'] ?? 'proprietario';
+    $tipo_utilizador = $data['tipo_utilizador'] ?? 'proprietario';
 
     if (!$casa_id || empty($dates)) {
         echo json_encode(['error' => 'Dados obrigatórios faltando']);
@@ -501,7 +511,7 @@ function unblockDates()
     }
 
     // Verificar se o usuário é o proprietário
-    if ($tipo_utiliador === 'proprietario') {
+    if ($tipo_utilizador === 'proprietario') {
         $stmt = $conn->prepare("SELECT proprietario_id FROM casas WHERE id = ?");
         $stmt->bind_param("i", $casa_id);
         $stmt->execute();

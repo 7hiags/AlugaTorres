@@ -32,35 +32,33 @@ if ($tipo_utilizador === 'proprietario') {
     $stmt->execute();
     $stats['propriedades'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
 
-    // Reservas Totais
-    $stmt = $conn->prepare("SELECT COUNT(*) as total FROM reservas r JOIN casas c ON r.casa_id = c.id WHERE c.proprietario_id = ?");
+    // Reservas Totais (excluir canceladas e rejeitadas)
+    $stmt = $conn->prepare("SELECT COUNT(*) as total FROM reservas r JOIN casas c ON r.casa_id = c.id WHERE c.proprietario_id = ? AND r.status NOT IN ('cancelada', 'rejeitada')");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $stats['reservas_totais'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
 
-    // Avaliação Média (se existir tabela de avaliações)
-    $stats['avaliacao_media'] = 'N/A'; // Placeholder até implementar avaliações
 
     // Receita Total
+
     $stmt = $conn->prepare("SELECT SUM(r.total) as total FROM reservas r JOIN casas c ON r.casa_id = c.id WHERE c.proprietario_id = ? AND r.status = 'concluida'");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $receita_total = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
     $stats['receita_total'] = '€' . number_format($receita_total, 2, ',', '.');
 } else {
-    // Reservas Feitas
-    $stmt = $conn->prepare("SELECT COUNT(*) as total FROM reservas WHERE arrendatario_id = ?");
+    // Reservas Feitas (excluir canceladas e rejeitadas)
+    $stmt = $conn->prepare("SELECT COUNT(*) as total FROM reservas WHERE arrendatario_id = ? AND status NOT IN ('cancelada', 'rejeitada')");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $stats['reservas_feitas'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
 
+
     // Favoritos (se existir tabela de favoritos)
     $stats['favoritos'] = 0; // Placeholder até implementar favoritos
 
-    // Avaliações (se existir tabela de avaliações)
-    $stats['avaliacoes'] = 0; // Placeholder até implementar avaliações
-
     // Total Gastos
+
     $stmt = $conn->prepare("SELECT SUM(total) as total FROM reservas WHERE arrendatario_id = ? AND status = 'concluida'");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
@@ -178,10 +176,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <li>
                         <?php if ($tipo_utilizador === 'proprietario'): ?>
                     <li><a href="#minhas-casas">
-                            <i class="fas fa-home"></i> Minhas Casas
+                            <i class="fas fa-home"></i> Minhas Propriedades
                         </a>
                     </li>
-                <?php else: ?>
+                <?php elseif ($tipo_utilizador === 'arrendatario'): ?>
                     <a href="#minhas-reservas">
                         <i class="fas fa-calendar-check"></i> Minhas Reservas
                     </a>
@@ -220,13 +218,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <span class="stat-label">Reservas Totais</span>
                             </div>
                             <div class="stat-card">
-                                <span class="stat-number"><?php echo $stats['avaliacao_media']; ?></span>
-                                <span class="stat-label">Avaliação Média</span>
-                            </div>
-                            <div class="stat-card">
                                 <span class="stat-number"><?php echo $stats['receita_total']; ?></span>
                                 <span class="stat-label">Receita Total</span>
                             </div>
+
                         </div>
                     <?php else: ?>
                         <div class="stats-grid">
@@ -239,13 +234,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <span class="stat-label">Favoritos</span>
                             </div>
                             <div class="stat-card">
-                                <span class="stat-number"><?php echo $stats['avaliacoes']; ?></span>
-                                <span class="stat-label">Avaliações</span>
-                            </div>
-                            <div class="stat-card">
                                 <span class="stat-number"><?php echo $stats['total_gastos']; ?></span>
                                 <span class="stat-label">Total Gastos</span>
                             </div>
+
                         </div>
                     <?php endif; ?>
 
@@ -348,6 +340,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                     </section>
+                <?php elseif ($tipo_utilizador === 'arrendatario'): ?>
+                    <hr style="margin: 40px 0; border: none; border-top: 1px solid #eee;">
+
+                    <!-- Área do Arrendatário -->
+                    <section id="minhas-reservas">
+                        <h2 class="section-title"><i class="fas fa-calendar-check"></i> Minhas Reservas</h2>
+
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <h3 style="margin-top: 0;">Gestão de Reservas</h3>
+                            <p>Gerencie suas reservas e acompanhe o status das mesmas.</p>
+
+                            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                                <a href="arrendatario/reservas.php" class="btn-save btn-success">
+                                    <i class="fas fa-list"></i> Ver Minhas Reservas
+                                </a>
+                            </div>
+                        </div>
+                    </section>
                 <?php endif; ?>
 
                 <!-- Zona de Perigo -->
@@ -363,72 +373,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
-    <footer>
-        <div class="footer-content">
-            <div class="footer-section">
-                <h4>AlugaTorres</h4>
-                <p>Sua plataforma de arrendamento em Torres Novas</p>
-            </div>
-            <div class="footer-section">
-                <h4>Ajuda</h4>
-                <ul>
-                    <li><a href="#">Central de Ajuda</a></li>
-                    <li><a href="#">Contactar Suporte</a></li>
-                    <li><a href="#">Política de Privacidade</a></li>
-                </ul>
-            </div>
-            <div class="footer-section">
-                <h4>Contactos</h4>
-                <p><i class="fas fa-map-marker-alt"></i> Torres Novas, Portugal</p>
-                <p><i class="fas fa-phone"></i> +351 929 326 577</p>
-                <p><i class="fas fa-envelope"></i> suporte@alugatorres.pt</p>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <p>&copy; <span id="ano"></span> AlugaTorres. Todos os direitos reservados.</p>
-        </div>
-    </footer>
+    <?php include 'footer.php'; ?>
 
     <script src="backend/script.js"></script>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const profileToggle = document.getElementById("profile-toggle");
-            const sidebar = document.getElementById("sidebar");
-            const sidebarOverlay = document.getElementById("sidebar-overlay");
-            const closeSidebar = document.getElementById("close-sidebar");
-
-            if (profileToggle) {
-                profileToggle.addEventListener("click", function(event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    sidebar.classList.toggle("active");
-                    sidebarOverlay.classList.toggle("active");
-                });
-            }
-
-            if (closeSidebar) {
-                closeSidebar.addEventListener("click", function() {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                });
-            }
-
-            // Close sidebar when clicking outside
-            document.addEventListener("click", function(event) {
-                if (
-                    !sidebar.contains(event.target) &&
-                    !profileToggle.contains(event.target)
-                ) {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                }
-            });
-        });
-    </script>
     <script>
         window.perfilTipoUsuario = '<?php echo $tipo_utilizador; ?>';
     </script>
+
 </body>
 
 </html>
