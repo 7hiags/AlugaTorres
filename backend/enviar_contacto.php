@@ -14,9 +14,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 try {
     // Conectar ao banco
     $dsn = "mysql:host={$host};dbname={$dbname};charset=utf8mb4";
-    $pdo = new PDO($dsn, $user, $password, [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    $pdo = new \PDO($dsn, $user, $password, [
+        \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+        \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
     ]);
 
     // (removido: logs de debug)
@@ -33,16 +33,16 @@ try {
 
     // Verificação explícita de campos vazios usando if
     if (!isset($input['nome']) || trim((string)$input['nome']) === '') {
-        throw new Exception('O campo nome é obrigatório');
+        throw new \Exception('O campo nome é obrigatório');
     }
     if (!isset($input['email']) || trim((string)$input['email']) === '') {
-        throw new Exception('O campo email é obrigatório');
+        throw new \Exception('O campo email é obrigatório');
     }
     if (!isset($input['assunto']) || trim((string)$input['assunto']) === '') {
-        throw new Exception('O campo assunto é obrigatório');
+        throw new \Exception('O campo assunto é obrigatório');
     }
     if (!isset($input['mensagem']) || trim((string)$input['mensagem']) === '') {
-        throw new Exception('O campo mensagem é obrigatório');
+        throw new \Exception('O campo mensagem é obrigatório');
     }
 
     // Captura e sanitiza (prioriza $input)
@@ -53,7 +53,7 @@ try {
     $utilizador_id = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        throw new Exception('Formato de email inválido');
+        throw new \Exception('Formato de email inválido');
     }
 
     // Inserir no banco (nome da tabela: mensagens_contactos)
@@ -94,9 +94,9 @@ try {
 
         echo json_encode(['status' => 'success', 'message' => 'Mensagem enviada com sucesso!', 'emails' => ['user' => $userEmailResult, 'admin' => $adminEmailResult]]);
     } else {
-        throw new Exception('Falha ao inserir no banco de dados');
+        throw new \Exception('Falha ao inserir no banco de dados');
     }
-} catch (Exception $e) {
+} catch (\Exception $e) {
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }

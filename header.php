@@ -29,7 +29,8 @@ if (!isset($_GET['refreshed'])) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="<?= $BASE_URL ?>style/style.css">
     <!-- Sistema de Notificações Toast -->
-    <script src="<?= $BASE_URL ?>backend/notifications.js"></script>
+    <script src="<?= $BASE_URL ?>js/notifications.js"></script>
+
     <script>
         // Verificar se o sistema de notificações carregou corretamente
         document.addEventListener('DOMContentLoaded', function() {
@@ -96,4 +97,3 @@ if (!isset($_GET['refreshed'])) {
 
     <!-- Renderizar notificações pendentes da sessão -->
     <?= renderPendingNotifications() ?>
-</body>

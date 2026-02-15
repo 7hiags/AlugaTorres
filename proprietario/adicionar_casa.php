@@ -52,12 +52,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Validações básicas
         if (empty($titulo) || empty($morada) || empty($preco_noite)) {
-            throw new Exception('Preencha todos os campos obrigatórios');
+            throw new \Exception('Preencha todos os campos obrigatórios');
         }
 
         if ($preco_noite <= 0) {
-            throw new Exception('Preço por noite deve ser maior que zero');
+            throw new \Exception('Preço por noite deve ser maior que zero');
         }
+
 
         // Inserir no banco
         $stmt = $conn->prepare("
@@ -101,9 +102,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             header("Location: editar_casa.php?id=$casa_id&success=1");
             exit;
         } else {
-            throw new Exception('Erro ao salvar no banco de dados: ' . $conn->error);
+            throw new \Exception('Erro ao salvar no banco de dados: ' . $conn->error);
         }
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         $error = $e->getMessage();
     }
 }
@@ -195,7 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="form-grid">
                     <div class="form-group">
-                        <label>Código Postal</label>
+                        <label>Código Postal <span class="required">*</span></label>
                         <input type="text" name="codigo_postal" class="form-control"
                             placeholder="Ex: 2350-000"
                             value="<?php echo isset($_POST['codigo_postal']) ? htmlspecialchars($_POST['codigo_postal']) : ''; ?>">
@@ -421,67 +422,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <?php include '../footer.php'; ?>
 
-    <script src="../backend/script.js"></script>
+    <script src="../js/script.js"></script>
+
+
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const profileToggle = document.getElementById("profile-toggle");
-            const sidebar = document.getElementById("sidebar");
-            const sidebarOverlay = document.getElementById("sidebar-overlay");
-            const closeSidebar = document.getElementById("close-sidebar");
+        document.addEventListener('DOMContentLoaded', function() {
 
-            if (profileToggle) {
-                profileToggle.addEventListener("click", function(event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    sidebar.classList.toggle("active");
-                    sidebarOverlay.classList.toggle("active");
-                });
+            // Função para combinar hora e minuto nos campos hidden
+            function updateTimeFields() {
+                // Check-in
+                const checkinHora = document.querySelector('select[name="hora_checkin_hora"]').value;
+                const checkinMinuto = document.querySelector('select[name="hora_checkin_minuto"]').value;
+                const checkinHidden = document.getElementById('hora_checkin_hidden');
+                checkinHidden.value = checkinHora.padStart(2, '0') + ':' + checkinMinuto;
+
+                // Check-out
+                const checkoutHora = document.querySelector('select[name="hora_checkout_hora"]').value;
+                const checkoutMinuto = document.querySelector('select[name="hora_checkout_minuto"]').value;
+                const checkoutHidden = document.getElementById('hora_checkout_hidden');
+                checkoutHidden.value = checkoutHora.padStart(2, '0') + ':' + checkoutMinuto;
             }
 
-            if (closeSidebar) {
-                closeSidebar.addEventListener("click", function() {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                });
-            }
-
-            // Close sidebar when clicking outside
-            document.addEventListener("click", function(event) {
-                if (
-                    !sidebar.contains(event.target) &&
-                    !profileToggle.contains(event.target)
-                ) {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                }
+            // Adicionar event listeners aos selects de hora
+            document.querySelectorAll('select[name*="hora_checkin"], select[name*="hora_checkout"]').forEach(select => {
+                select.addEventListener('change', updateTimeFields);
             });
+
+            // Inicializar valores
+            updateTimeFields();
         });
-    </script>
-
-    document.addEventListener('DOMContentLoaded', function() {
-    // Função para combinar hora e minuto nos campos hidden
-    function updateTimeFields() {
-    // Check-in
-    const checkinHora = document.querySelector('select[name="hora_checkin_hora"]').value;
-    const checkinMinuto = document.querySelector('select[name="hora_checkin_minuto"]').value;
-    const checkinHidden = document.getElementById('hora_checkin_hidden');
-    checkinHidden.value = checkinHora.padStart(2, '0') + ':' + checkinMinuto;
-
-    // Check-out
-    const checkoutHora = document.querySelector('select[name="hora_checkout_hora"]').value;
-    const checkoutMinuto = document.querySelector('select[name="hora_checkout_minuto"]').value;
-    const checkoutHidden = document.getElementById('hora_checkout_hidden');
-    checkoutHidden.value = checkoutHora.padStart(2, '0') + ':' + checkoutMinuto;
-    }
-
-    // Adicionar event listeners aos selects de hora
-    document.querySelectorAll('select[name*="hora_checkin"], select[name*="hora_checkout"]').forEach(select => {
-    select.addEventListener('change', updateTimeFields);
-    });
-
-    // Inicializar valores
-    updateTimeFields();
-    });
     </script>
 </body>
 
