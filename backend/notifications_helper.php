@@ -1,33 +1,22 @@
 <?php
 
 /**
- * Helper para Sistema de Notificações Toast do AlugaTorres
- * Inclua este arquivo no header.php ou em páginas específicas
+ * Helper de Notificações Toast para AlugaTorres
+ * 
+ * Este arquivo contém funções para gerenciar notificações toast
+ * que serão exibidas ao usuário após operações (sucesso, erro, aviso, etc.)
  */
 
 /**
- * Retorna o HTML/JS necessário para inicializar o sistema de notificações
- */
-function getNotificationsSystem()
-{
-    $basePath = '/AlugaTorres'; // Ajuste conforme necessário
-
-    return '
-    <!-- Sistema de Notificações Toast -->
-    <link rel="stylesheet" href="' . $basePath . '/style/style.css">
-    <script src="' . $basePath . '/backend/notifications.js"></script>
-    ';
-}
-
-/**
- * Gera uma notificação PHP que será convertida para JavaScript
+ * Adiciona uma notificação à sessão
+ * 
+ * @param string $type Tipo da notificação: 'success', 'error', 'warning', 'info'
  * @param string $message Mensagem da notificação
- * @param string $type Tipo: success, error, warning, info
- * @param int $duration Duração em ms
+ * @param int $duration Duração em milissegundos (padrão: 5000)
  */
-function setNotification($message, $type = 'info', $duration = 5000)
+function addNotification($type, $message, $duration = 5000)
 {
-    if (!isset($_SESSION)) {
+    if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
 
@@ -36,18 +25,53 @@ function setNotification($message, $type = 'info', $duration = 5000)
     }
 
     $_SESSION['notifications'][] = [
-        'message' => $message,
         'type' => $type,
-        'duration' => $duration
+        'message' => $message,
+        'duration' => $duration,
+        'id' => uniqid('notif_')
     ];
 }
 
 /**
- * Renderiza as notificações pendentes da sessão
+ * Notificação de sucesso
+ */
+function notifySuccess($message, $duration = 5000)
+{
+    addNotification('success', $message, $duration);
+}
+
+/**
+ * Notificação de erro
+ */
+function notifyError($message, $duration = 8000)
+{
+    addNotification('error', $message, $duration);
+}
+
+/**
+ * Notificação de aviso
+ */
+function notifyWarning($message, $duration = 6000)
+{
+    addNotification('warning', $message, $duration);
+}
+
+/**
+ * Notificação informativa
+ */
+function notifyInfo($message, $duration = 5000)
+{
+    addNotification('info', $message, $duration);
+}
+
+/**
+ * Renderiza as notificações pendentes da sessão e limpa a lista
+ * 
+ * @return string HTML das notificações
  */
 function renderPendingNotifications()
 {
-    if (!isset($_SESSION)) {
+    if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
 
@@ -55,58 +79,35 @@ function renderPendingNotifications()
         return '';
     }
 
-    $script = '<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        if (typeof AlugaTorresNotifications !== "undefined") {
-    ';
+    $notifications = $_SESSION['notifications'];
+    unset($_SESSION['notifications']);
 
-    foreach ($_SESSION['notifications'] as $notification) {
-        $message = addslashes($notification['message']);
-        $type = $notification['type'];
-        $duration = $notification['duration'];
+    $html = '<script>' . "\n";
+    $html .= 'document.addEventListener("DOMContentLoaded", function() {' . "\n";
 
-        $script .= "AlugaTorresNotifications.show('{$message}', '{$type}', {$duration});\n";
+    foreach ($notifications as $notif) {
+        $html .= sprintf(
+            '    if (typeof AlugaTorresNotifications !== "undefined") {
+        AlugaTorresNotifications.%s("%s", %d);
+    }' . "\n",
+            $notif['type'],
+            addslashes($notif['message']),
+            $notif['duration']
+        );
     }
 
-    $script .= '
-        }
-    });
-    </script>';
+    $html .= '});' . "\n";
+    $html .= '</script>' . "\n";
 
-    // Limpar notificações após renderizar
-    $_SESSION['notifications'] = [];
-
-    return $script;
+    return $html;
 }
 
 /**
- * Wrapper para mostrar notificação de sucesso
+ * Retorna o caminho base para assets
  */
-function notifySuccess($message, $duration = 5000)
+function getBasePath()
 {
-    setNotification($message, 'success', $duration);
+    return '/AlugaTorres/';
 }
 
-/**
- * Wrapper para mostrar notificação de erro
- */
-function notifyError($message, $duration = 5000)
-{
-    setNotification($message, 'error', $duration);
-}
-
-/**
- * Wrapper para mostrar notificação de aviso
- */
-function notifyWarning($message, $duration = 5000)
-{
-    setNotification($message, 'warning', $duration);
-}
-
-/**
- * Wrapper para mostrar notificação de informação
- */
-function notifyInfo($message, $duration = 5000)
-{
-    setNotification($message, 'info', $duration);
-}
+// Nota: getAdminEmail() está definido em email_utils.php

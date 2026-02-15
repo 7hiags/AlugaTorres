@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     session_destroy();
                     header("Location: index.php?msg=conta_eliminada");
                     exit;
-                } catch (Exception $e) {
+                } catch (\Exception $e) {
                     $conn->rollback();
                     $error = 'Erro ao eliminar conta. Tente novamente.';
                 }
@@ -202,7 +202,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
     </div>
 
-    <script src="backend/script.js"></script>
+    <script src="js/script.js"></script>
+
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {

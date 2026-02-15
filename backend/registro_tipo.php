@@ -38,8 +38,8 @@ if (isset($_SESSION['user'])) {
                     <li><i class="fas fa-check"></i> Pesquisar e reservar casas</li>
                     <li><i class="fas fa-check"></i> Guardar favoritos</li>
                     <li><i class="fas fa-check"></i> Gerir as suas reservas</li>
-                    <li><i class="fas fa-check"></i> Deixar avaliações</li>
                 </ul>
+
                 <p><strong>Ideal para:</strong> Turistas, viajantes, famílias</p>
             </div>
 
@@ -73,6 +73,7 @@ if (isset($_SESSION['user'])) {
 
     <?php include '../footer.php'; ?>
 
+    <script src="../js/script.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const cards = document.querySelectorAll('.perfil-card');
