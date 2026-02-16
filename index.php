@@ -1,4 +1,11 @@
-<?php session_start(); ?>
+<?php
+session_start();
+require_once 'backend/db.php';
+
+$tipo_utilizador = $_SESSION['tipo_utilizador'] ?? 'arrendatario';
+
+?>
+
 <!DOCTYPE html>
 <html lang="pt-pt">
 
@@ -6,7 +13,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="AlugaTorres - Sua agência de viagens para destinos incríveis">
-  <title>AlugaTorres | Home</title>
+  <title>AlugaTorres | Inicio</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link rel="stylesheet" href="style/style.css">
   <link rel="website icon" type="png" href="style/img/Logo_AlugaTorres_branco.png">
@@ -79,49 +86,25 @@
         experiências memoráveis, com sugestões locais e suporte durante toda a sua estadia.
       </p>
       <div class="about-cta">
-        <a href="pesquisa.php" class="primary-button">Procurar Alojamento</a>
-        <a href="backend/registro.php" class="secondary-button">Registe a sua Casa</a>
+        <?php if (!isset($_SESSION['user'])): ?>
+          <!-- Não logado: mostra ambos os botões -->
+          <a href="pesquisa.php" class="primary-button">Procurar Alojamento</a>
+          <a href="proprietario/adicionar_casa.php" class="secondary-button">Registe a sua Casa</a>
+        <?php elseif ($tipo_utilizador === 'arrendatario'): ?>
+          <!-- Logado como arrendatário: mostra apenas procurar alojamento -->
+          <a href="pesquisa.php" class="primary-button">Procurar Alojamento</a>
+        <?php elseif ($tipo_utilizador === 'proprietario'): ?>
+          <!-- Logado como proprietário: mostra apenas registe a sua casa -->
+          <a href="proprietario/adicionar_casa.php" class="secondary-button">Registe a sua Casa</a>
+        <?php endif; ?>
       </div>
+
     </section>
 
     <?php include 'footer.php'; ?>
   </main>
-  <script src="backend/script.js"></script>
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      const profileToggle = document.getElementById("profile-toggle");
-      const sidebar = document.getElementById("sidebar");
-      const sidebarOverlay = document.getElementById("sidebar-overlay");
-      const closeSidebar = document.getElementById("close-sidebar");
+  <script src="js/script.js"></script>
 
-      if (profileToggle) {
-        profileToggle.addEventListener("click", function(event) {
-          event.preventDefault();
-          event.stopPropagation();
-          sidebar.classList.toggle("active");
-          sidebarOverlay.classList.toggle("active");
-        });
-      }
-
-      if (closeSidebar) {
-        closeSidebar.addEventListener("click", function() {
-          sidebar.classList.remove("active");
-          sidebarOverlay.classList.remove("active");
-        });
-      }
-
-      // Close sidebar when clicking outside
-      document.addEventListener("click", function(event) {
-        if (
-          !sidebar.contains(event.target) &&
-          !profileToggle.contains(event.target)
-        ) {
-          sidebar.classList.remove("active");
-          sidebarOverlay.classList.remove("active");
-        }
-      });
-    });
-  </script>
 </body>
 
 </html>
