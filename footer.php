@@ -24,6 +24,7 @@ if (session_status() === PHP_SESSION_NONE) {
             <ul>
                 <li><a href="<?= $BASE_URL ?>index.php">Home</a></li>
                 <li><a href="<?= $BASE_URL ?>pesquisa.php">Pesquisa</a></li>
+                <li><a href="<?= $BASE_URL ?>dashboard.php">Dashboard</a></li>
                 <li><a href="<?= $BASE_URL ?>sobretorres.php">Sobre Torres</a></li>
                 <li><a href="<?= $BASE_URL ?>contactos.php">Contactos</a></li>
             </ul>

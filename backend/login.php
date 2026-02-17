@@ -7,28 +7,28 @@ session_start();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
     if (!isset($_POST['email']) || !isset($_POST['pass'])) {
-      throw new Exception("Campos de email e senha são obrigatórios");
+      throw new \Exception("Campos de email e senha são obrigatórios");
     }
 
     $email = trim($_POST['email']);
     $pass = trim($_POST['pass']);
 
     if (empty($email) || empty($pass)) {
-      throw new Exception("Email e senha não podem estar vazios");
+      throw new \Exception("Email e senha não podem estar vazios");
     }
 
     if (!$conn) {
-      throw new Exception("Erro na conexão com o banco de dados");
+      throw new \Exception("Erro na conexão com o banco de dados");
     }
 
     $stmt = $conn->prepare("SELECT id, utilizador, palavrapasse_hash, tipo_utilizador FROM utilizadores WHERE email = ?");
     if (!$stmt) {
-      throw new Exception("Erro na preparação da consulta: " . $conn->error);
+      throw new \Exception("Erro na preparação da consulta: " . $conn->error);
     }
 
     $stmt->bind_param("s", $email);
     if (!$stmt->execute()) {
-      throw new Exception("Erro ao executar a consulta: " . $stmt->error);
+      throw new \Exception("Erro ao executar a consulta: " . $stmt->error);
     }
 
     $stmt->store_result();
@@ -43,6 +43,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['user_id'] = $id;
         $_SESSION['tipo_utilizador'] = $tipo_utilizador;
 
+        // Log para debug
+        error_log("Login successful: user_id=$id, user=$user, tipo=$tipo_utilizador");
+
         // Notificação de sucesso no login
         notifySuccess('Bem-vindo de volta, ' . htmlspecialchars($user) . '! Login realizado com sucesso.');
 
@@ -50,12 +53,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
       } else {
 
-        throw new Exception("Senha incorreta");
+        throw new \Exception("Senha incorreta");
       }
     } else {
-      throw new Exception("Email não encontrado");
+      throw new \Exception("Email não encontrado");
     }
-  } catch (Exception $e) {
+  } catch (\Exception $e) {
     // Usar sistema de notificações toast - mostrar motivo específico do erro
     notifyError('Erro no login: ' . $e->getMessage());
     header("Location: login.php");
@@ -108,7 +111,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <?php include '../footer.php'; ?>
 
-  <script src="../backend/script.js"></script>
+  <script src="../js/script.js"></script>
+
   <script>
     document.addEventListener("DOMContentLoaded", function() {
       const profileToggle = document.getElementById("profile-toggle");

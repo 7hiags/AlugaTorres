@@ -1,0 +1,1 @@
+faça um redirecionamento do login caso o admin faça login, redirecione para dashboard do admin

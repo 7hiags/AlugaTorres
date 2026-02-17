@@ -8,12 +8,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   require_once __DIR__ . '/backend/email_utils.php';
 
   try {
-    // Conectar via PDO usando as variáveis definidas em db.php
+
+    // Conectar via pdo usando as variáveis definidas em db.php
     $dsn = "mysql:host={$host};dbname={$dbname};charset=utf8mb4";
-    $pdo = new PDO($dsn, $user, $password, [
-      PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-      PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    $pdo = new \PDO($dsn, $user, $password, [
+      \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+      \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
     ]);
+
 
     // Aceitar tanto form-data (popula $_POST) quanto JSON no body
     $rawBody = file_get_contents('php://input');
@@ -27,16 +29,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Verificação explícita de campos vazios usando if
     if (!isset($input['nome']) || trim((string)$input['nome']) === '') {
-      throw new Exception('O campo nome é obrigatório');
+      throw new \Exception('O campo nome é obrigatório');
     }
     if (!isset($input['email']) || trim((string)$input['email']) === '') {
-      throw new Exception('O campo email é obrigatório');
+      throw new \Exception('O campo email é obrigatório');
     }
     if (!isset($input['assunto']) || trim((string)$input['assunto']) === '') {
-      throw new Exception('O campo assunto é obrigatório');
+      throw new \Exception('O campo assunto é obrigatório');
     }
     if (!isset($input['mensagem']) || trim((string)$input['mensagem']) === '') {
-      throw new Exception('O campo mensagem é obrigatório');
+      throw new \Exception('O campo mensagem é obrigatório');
     }
 
     // Captura e sanitiza
@@ -47,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $utilizador_id = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-      throw new Exception('Formato de email inválido');
+      throw new \Exception('Formato de email inválido');
     }
 
     // Inserir no banco (nome da tabela: mensagens_contactos)
@@ -92,9 +94,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'emails' => ['user' => $userEmailResult, 'admin' => $adminEmailResult]
       ]);
     } else {
-      throw new Exception('Falha ao inserir no banco de dados');
+      throw new \Exception('Falha ao inserir no banco de dados');
     }
-  } catch (Exception $e) {
+  } catch (\Exception $e) {
+
     http_response_code(500);
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
   }
@@ -172,7 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <div class="contact-form-side">
-      <div class="form-container">
+      <div class="form-container-contacto">
         <form id="form-contacto" class="contact-form">
           <h3><i class="fas fa-paper-plane"></i> Envie-nos uma mensagem</h3>
 
@@ -208,43 +211,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   <?php include 'footer.php'; ?>
 
-  <script src="backend/script.js"></script> <!-- sidebar script moved to sidebar.php -->
+  <script src="js/script.js"></script>
 
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      const profileToggle = document.getElementById("profile-toggle");
-      const sidebar = document.getElementById("sidebar");
-      const sidebarOverlay = document.getElementById("sidebar-overlay");
-      const closeSidebar = document.getElementById("close-sidebar");
-
-      if (profileToggle) {
-        profileToggle.addEventListener("click", function(event) {
-          event.preventDefault();
-          event.stopPropagation();
-          sidebar.classList.toggle("active");
-          sidebarOverlay.classList.toggle("active");
-        });
-      }
-
-      if (closeSidebar) {
-        closeSidebar.addEventListener("click", function() {
-          sidebar.classList.remove("active");
-          sidebarOverlay.classList.remove("active");
-        });
-      }
-
-      // Close sidebar when clicking outside
-      document.addEventListener("click", function(event) {
-        if (
-          !sidebar.contains(event.target) &&
-          !profileToggle.contains(event.target)
-        ) {
-          sidebar.classList.remove("active");
-          sidebarOverlay.classList.remove("active");
-        }
-      });
-    });
-  </script>
 </body>
 
 </html>

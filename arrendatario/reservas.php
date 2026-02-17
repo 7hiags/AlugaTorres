@@ -21,205 +21,6 @@ if ($result->num_rows === 0) {
 
 $user_id = $_SESSION['user_id'];
 $tipo_utilizador = $_SESSION['tipo_utilizador'] ?? 'arrendatario';
-$casa_id = isset($_GET['casa_id']) ? (int)$_GET['casa_id'] : null;
-$filtro = isset($_GET['filtro']) ? $_GET['filtro'] : 'todas';
-
-// Construir query conforme tipo de usuário
-if ($tipo_utilizador === 'proprietario') {
-    // Proprietário vê reservas das suas casas
-    $query = "SELECT r.*, c.titulo as casa_titulo, u.utilizador as arrendatario_nome, u.email as arrendatario_email
-              FROM reservas r
-              JOIN casas c ON r.casa_id = c.id
-              JOIN utilizadores u ON r.arrendatario_id = u.id
-              WHERE c.proprietario_id = ?";
-
-    if ($casa_id) {
-        $query .= " AND r.casa_id = ?";
-    }
-
-    // Aplicar filtro
-    if ($filtro !== 'todas') {
-        $query .= " AND r.status = ?";
-    }
-
-    $query .= " ORDER BY r.data_reserva DESC";
-
-    $stmt = $conn->prepare($query);
-
-    if ($casa_id) {
-        if ($filtro !== 'todas') {
-            $stmt->bind_param("iis", $user_id, $casa_id, $filtro);
-        } else {
-            $stmt->bind_param("ii", $user_id, $casa_id);
-        }
-    } else {
-        if ($filtro !== 'todas') {
-            $stmt->bind_param("is", $user_id, $filtro);
-        } else {
-            $stmt->bind_param("i", $user_id);
-        }
-    }
-} else {
-    // Arrendatário vê suas próprias reservas
-    $query = "SELECT r.*, c.titulo as casa_titulo, u.utilizador as proprietario_nome
-              FROM reservas r
-              JOIN casas c ON r.casa_id = c.id
-              JOIN utilizadores u ON c.proprietario_id = u.id
-              WHERE r.arrendatario_id = ?";
-
-    // Aplicar filtro
-    if ($filtro !== 'todas') {
-        $query .= " AND r.status = ?";
-    }
-
-    $query .= " ORDER BY r.data_checkin DESC";
-
-    $stmt = $conn->prepare($query);
-
-    if ($filtro !== 'todas') {
-        $stmt->bind_param("is", $user_id, $filtro);
-    } else {
-        $stmt->bind_param("i", $user_id);
-    }
-}
-
-$stmt->execute();
-$reservas_result = $stmt->get_result();
-
-// Se proprietário, obter lista de casas para filtro
-if ($tipo_utilizador === 'proprietario') {
-    $casas_query = $conn->prepare("SELECT id, titulo FROM casas WHERE proprietario_id = ? ORDER BY titulo");
-    $casas_query->bind_param("i", $user_id);
-    $casas_query->execute();
-    $casas_result = $casas_query->get_result();
-}
-
-// Processar ações
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
-    $reserva_id = $_POST['reserva_id'] ?? null;
-
-    // Criar nova reserva
-    if (isset($_POST['casa_id']) && isset($_POST['data_checkin']) && isset($_POST['data_checkout'])) {
-        $casa_id_post = (int)$_POST['casa_id'];
-        $data_checkin = $_POST['data_checkin'];
-        $data_checkout = $_POST['data_checkout'];
-        $hospedes = (int)($_POST['hospedes'] ?? 1);
-
-        // Verificar se as datas são válidas
-        $data_checkin_date = new DateTime($chaeckin);
-        $data_checkout_date = new DateTime($data_checkout);
-        $hoje = new DateTime();
-
-        if ($data_checkin_date >= $data_checkout_date) {
-            $error = 'Data de data_checkout deve ser posterior ao data_checkin';
-        } elseif ($data_checkin_date < $hoje) {
-            $error = 'Data de data_checkin não pode ser no passado';
-        } else {
-            // Verificar disponibilidade
-            $stmt = $conn->prepare("
-                SELECT COUNT(*) as conflitos FROM (
-                    SELECT id FROM reservas
-                    WHERE casa_id = ? AND status != 'cancelada' AND (
-                        (data_checkin <= ? AND data_checkout > ?) OR
-                        (data_checkin < ? AND data_checkout >= ?) OR
-                        (data_checkin >= ? AND data_checkout <= ?)
-                    )
-                    UNION
-                    SELECT id FROM bloqueios
-                    WHERE casa_id = ? AND (
-                        (data_inicio <= ? AND data_fim > ?) OR
-                        (data_inicio < ? AND data_fim >= ?) OR
-                        (data_inicio >= ? AND data_fim <= ?)
-                    )
-                ) as conflitos
-            ");
-
-            $stmt->bind_param(
-                "ssssssssssssss",
-                $casa_id_post,
-                $data_checkout,
-                $data_checkin,
-                $data_checkout,
-                $data_checkin,
-                $data_checkin,
-                $data_checkout,
-                $casa_id_post,
-                $data_checkout,
-                $data_checkin,
-                $data_checkout,
-                $data_checkin,
-                $data_checkin,
-                $data_checkout
-            );
-            $stmt->execute();
-            $result = $stmt->get_result();
-            $conflitos = $result->fetch_assoc()['conflitos'];
-
-            if ($conflitos > 0) {
-                $error = 'Datas não disponíveis para reserva';
-            } else {
-                // Calcular preço
-                $stmt = $conn->prepare("SELECT preco_noite, preco_limpeza, taxa_seguranca FROM casas WHERE id = ?");
-                $stmt->bind_param("i", $casa_id_post);
-                $stmt->execute();
-                $casa = $stmt->get_result()->fetch_assoc();
-
-                $data_checkin_dt = new DateTime($data_checkin);
-                $data_checkout_dt = new DateTime($data_checkout);
-                $noites = $data_checkin_dt->diff($data_checkout_dt)->days;
-
-                $subtotal = $noites * $casa['preco_noite'];
-                $total = $subtotal + $casa['preco_limpeza'] + $casa['taxa_seguranca'];
-
-                // Criar reserva
-                $stmt = $conn->prepare("
-                    INSERT INTO reservas (casa_id, arrendatario_id, data_checkin, data_checkout, hospedes, preco_total, status)
-                    VALUES (?, ?, ?, ?, ?, ?, 'pendente')
-                ");
-                $stmt->bind_param("iissid", $casa_id_post, $user_id, $data_checkin, $data_checkout, $hospedes, $total);
-
-                if ($stmt->execute()) {
-                    $success = 'Reserva criada com sucesso!';
-                    // Marcar para atualizar estatísticas
-                    setcookie('atualizar_stats', 'true', time() + 300, '/'); // 5 minutos
-                } else {
-                    $error = 'Erro ao criar reserva: ' . $conn->error;
-                }
-            }
-        }
-    } elseif ($reserva_id && $action) {
-        switch ($action) {
-            case 'confirmar':
-                $stmt = $conn->prepare("UPDATE reservas SET status = 'confirmada', data_confirmacao = NOW() WHERE id = ?");
-                $stmt->bind_param("i", $reserva_id);
-                $stmt->execute();
-                break;
-
-            case 'cancelar':
-                $stmt = $conn->prepare("UPDATE reservas SET status = 'cancelada', data_cancelamento = NOW() WHERE id = ?");
-                $stmt->bind_param("i", $reserva_id);
-                $stmt->execute();
-                break;
-
-            case 'concluir':
-                $stmt = $conn->prepare("UPDATE reservas SET status = 'concluida' WHERE id = ?");
-                $stmt->bind_param("i", $reserva_id);
-                $stmt->execute();
-                break;
-
-            case 'rejeitar':
-                $stmt = $conn->prepare("UPDATE reservas SET status = 'rejeitada' WHERE id = ?");
-                $stmt->bind_param("i", $reserva_id);
-                $stmt->execute();
-                break;
-        }
-
-        // Recarregar página
-        header("Location: reservas.php" . ($casa_id ? "?casa_id=$casa_id" : ""));
-        exit;
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="pt-pt">
@@ -230,6 +31,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>AlugaTorres | Reservas</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="../style/style.css">
+    <link rel="website icon" type="png" href="../style/img/Logo_AlugaTorres_branco.png">
+    <style>
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 50px;
+        }
+
+        .loading-spinner i {
+            font-size: 2em;
+            color: #007bff;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+        }
+    </style>
 </head>
 
 <body>
@@ -243,37 +87,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </h1>
         </div>
 
-        <?php if (isset($error) && $error): ?>
-            <div class="message error">
-                <?php echo htmlspecialchars($error); ?>
-            </div>
-        <?php endif; ?>
-
-        <?php if (isset($success) && $success): ?>
-            <div class="message success">
-                <?php echo htmlspecialchars($success); ?>
-                <div style="margin-top: 10px;">
-                    <a href="../perfil.php" class="btn-save" style="background: #28a745;">
-                        <i class="fas fa-chart-line"></i> Ver Estatísticas Atualizadas
-                    </a>
-                </div>
-            </div>
-        <?php endif; ?>
+        <!-- Mensagens dinâmicas -->
+        <div id="message-container"></div>
 
         <div class="filtros-container">
-            <?php if ($tipo_utilizador === 'proprietario' && $casas_result->num_rows > 0): ?>
-                <div class="filtro-group">
-                    <span class="filtro-label">Filtrar por casa:</span>
-                    <select class="filtro-select" id="casaFilter" onchange="filterByCasa(this.value)">
-                        <option value="">Todas as casas</option>
-                        <?php while ($casa = $casas_result->fetch_assoc()): ?>
-                            <option value="<?php echo $casa['id']; ?>" <?php echo $casa_id == $casa['id'] ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($casa['titulo']); ?>
-                            </option>
-                        <?php endwhile; ?>
-                    </select>
-                </div>
-            <?php endif; ?>
+            <!-- Filtro por casa (apenas proprietário) -->
+            <div class="filtro-group" id="casa-filter-group" style="display: none;">
+                <span class="filtro-label">Filtrar por casa:</span>
+                <select class="filtro-select" id="casaFilter">
+                    <option value="">Todas as casas</option>
+                </select>
+            </div>
 
             <div class="filtro-group">
                 <span class="filtro-label">Período:</span>
@@ -293,150 +117,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="status-filtros">
-            <button class="status-btn <?php echo $filtro === 'todas' ? 'active' : ''; ?>" onclick="filterByStatus('todas')">
+            <button class="status-btn active" data-status="todas" onclick="filterByStatus('todas')">
                 Todas
             </button>
-            <button class="status-btn <?php echo $filtro === 'pendente' ? 'active' : ''; ?>" onclick="filterByStatus('pendente')">
+            <button class="status-btn" data-status="pendente" onclick="filterByStatus('pendente')">
                 Pendentes
             </button>
-            <button class="status-btn <?php echo $filtro === 'confirmada' ? 'active' : ''; ?>" onclick="filterByStatus('confirmada')">
+            <button class="status-btn" data-status="confirmada" onclick="filterByStatus('confirmada')">
                 Confirmadas
             </button>
-            <button class="status-btn <?php echo $filtro === 'concluida' ? 'active' : ''; ?>" onclick="filterByStatus('concluida')">
+            <button class="status-btn" data-status="concluida" onclick="filterByStatus('concluida')">
                 Concluídas
             </button>
-            <button class="status-btn <?php echo $filtro === 'cancelada' ? 'active' : ''; ?>" onclick="filterByStatus('cancelada')">
+            <button class="status-btn" data-status="cancelada" onclick="filterByStatus('cancelada')">
                 Canceladas
             </button>
         </div>
 
-        <div class="reservas-table-container">
-            <?php if ($reservas_result->num_rows > 0): ?>
-                <table class="reservas-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Propriedade</th>
-                            <?php if ($tipo_utilizador === 'proprietario'): ?>
-                                <th>Arrendatário</th>
-                            <?php else: ?>
-                                <th>Proprietário</th>
-                            <?php endif; ?>
-                            <th>Datas</th>
-                            <th>Status</th>
-                            <th>Valor</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php while ($reserva = $reservas_result->fetch_assoc()): ?>
-                            <tr>
-                                <td class="reserva-id">#<?php echo str_pad($reserva['id'], 5, '0', STR_PAD_LEFT); ?></td>
-                                <td>
-                                    <div class="reserva-casa"><?php echo htmlspecialchars($reserva['casa_titulo']); ?></div>
-                                </td>
-                                <td>
-                                    <?php if ($tipo_utilizador === 'proprietario'): ?>
-                                        <div><?php echo htmlspecialchars($reserva['arrendatario_nome']); ?></div>
-                                        <div style="font-size: 0.8em; color: #666;"><?php echo htmlspecialchars($reserva['arrendatario_email']); ?></div>
-                                    <?php else: ?>
-                                        <div><?php echo htmlspecialchars($reserva['proprietario_nome']); ?></div>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <div class="reserva-datas">
-                                        <div><strong>Check-in:</strong> <?php echo date('d/m/Y', strtotime($reserva['data_data_checkin'])); ?></div>
-                                        <div><strong>Check-out:</strong> <?php echo date('d/m/Y', strtotime($reserva['data_data_checkout'])); ?></div>
-                                        <div><strong>Noites:</strong> <?php echo $reserva['noites']; ?></div>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="reserva-status status-<?php echo $reserva['status']; ?>">
-                                        <?php
-                                        $status_text = [
-                                            'pendente' => 'Pendente',
-                                            'confirmada' => 'Confirmada',
-                                            'concluida' => 'Concluída',
-                                            'cancelada' => 'Cancelada',
-                                            'rejeitada' => 'Rejeitada'
-                                        ];
-                                        echo $status_text[$reserva['status']] ?? $reserva['status'];
-                                        ?>
-                                    </span>
-                                </td>
-                                <td class="reserva-valor"><?php echo number_format($reserva['total'], 2, ',', ' '); ?>€</td>
-                                <td>
-                                    <div class="reserva-acoes">
-                                        <button class="acao-btn btn-detalhes" onclick="showReservaDetails(<?php echo htmlspecialchars(json_encode($reserva)); ?>)">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-
-                                        <?php if ($tipo_utilizador === 'proprietario'): ?>
-                                            <?php if ($reserva['status'] === 'pendente'): ?>
-                                                <form method="POST" style="display: inline;">
-                                                    <input type="hidden" name="reserva_id" value="<?php echo $reserva['id']; ?>">
-                                                    <input type="hidden" name="action" value="confirmar">
-                                                    <button type="submit" class="acao-btn btn-confirmar" onclick="return confirm('Confirmar esta reserva?')">
-                                                        <i class="fas fa-check"></i>
-                                                    </button>
-                                                </form>
-                                                <form method="POST" style="display: inline;">
-                                                    <input type="hidden" name="reserva_id" value="<?php echo $reserva['id']; ?>">
-                                                    <input type="hidden" name="action" value="rejeitar">
-                                                    <button type="submit" class="acao-btn btn-cancelar" onclick="return confirm('Rejeitar esta reserva?')">
-                                                        <i class="fas fa-times"></i>
-                                                    </button>
-                                                </form>
-                                            <?php elseif ($reserva['status'] === 'confirmada' && strtotime($reserva['data_data_checkout']) <= time()): ?>
-                                                <form method="POST" style="display: inline;">
-                                                    <input type="hidden" name="reserva_id" value="<?php echo $reserva['id']; ?>">
-                                                    <input type="hidden" name="action" value="concluir">
-                                                    <button type="submit" class="acao-btn btn-concluir" onclick="return confirm('Marcar como concluída?')">
-                                                        <i class="fas fa-flag-checkered"></i>
-                                                    </button>
-                                                </form>
-                                            <?php endif; ?>
-                                        <?php else: ?>
-                                            <?php if ($reserva['status'] === 'pendente' || $reserva['status'] === 'confirmada'): ?>
-                                                <form method="POST" style="display: inline;">
-                                                    <input type="hidden" name="reserva_id" value="<?php echo $reserva['id']; ?>">
-                                                    <input type="hidden" name="action" value="cancelar">
-                                                    <button type="submit" class="acao-btn btn-cancelar" onclick="return confirm('Cancelar esta reserva?')">
-                                                        <i class="fas fa-times"></i>
-                                                    </button>
-                                                </form>
-                                            <?php endif; ?>
-                                        <?php endif; ?>
-
-                                        <button class="acao-btn btn-mensagem" onclick="window.location.href='../mensagens.php?reserva_id=<?php echo $reserva['id']; ?>'">
-                                            <i class="fas fa-envelope"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endwhile; ?>
-                    </tbody>
-                </table>
-
-                <div class="pagination">
-                    <button class="page-btn active">1</button>
-                    <button class="page-btn">2</button>
-                    <button class="page-btn">3</button>
-                    <span>...</span>
-                    <button class="page-btn">5</button>
-                </div>
-            <?php else: ?>
-                <div class="empty-state">
-                    <i class="fas fa-calendar-times"></i>
-                    <h3>Nenhuma reserva encontrada</h3>
-                    <p><?php echo $tipo_utilizador === 'proprietario' ? 'Ainda não há reservas para suas propriedades.' : 'Você ainda não fez nenhuma reserva.'; ?></p>
-                    <?php if ($tipo_utilizador === 'arrendatario'): ?>
-                        <a href="../pesquisa.php" class="filtro-btn" style="margin-top: 15px;">
-                            <i class="fas fa-search"></i> Buscar Alojamentos
-                        </a>
-                    <?php endif; ?>
-                </div>
-            <?php endif; ?>
+        <div class="reservas-table-container" id="reservas-content">
+            <!-- Loading spinner -->
+            <div class="loading-spinner" id="loading">
+                <i class="fas fa-spinner"></i>
+            </div>
         </div>
     </div>
 
@@ -457,7 +159,378 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <?php include '../footer.php'; ?>
 
-    <script src="../backend/script.js"></script>
+    <script src="../js/script.js"></script>
+    <script>
+        // Configuração
+        const API_URL = '../backend_api/api_reservas.php';
+        const USER_TYPE = '<?php echo $tipo_utilizador; ?>';
+        let currentFiltro = 'todas';
+        let currentCasaId = '';
+        let currentPeriodo = 'todos';
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            loadReservas();
+            if (USER_TYPE === 'proprietario') {
+                loadCasas();
+            }
+        });
+
+        // Carregar reservas
+        async function loadReservas() {
+            const container = document.getElementById('reservas-content');
+            container.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner"></i></div>';
+
+            try {
+                const params = new URLSearchParams({
+
+                    action: 'list',
+                    tipo: USER_TYPE === 'proprietario' ? 'proprietario' : 'minhas',
+                    filtro: currentFiltro,
+                    periodo: currentPeriodo
+                });
+
+                if (currentCasaId) {
+                    params.append('casa_id', currentCasaId);
+                }
+
+                const response = await fetch(`${API_URL}?${params}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+
+                renderReservas(data.reservas || []);
+            } catch (error) {
+                showError('Erro ao carregar reservas. Tente novamente.');
+                console.error('Error:', error);
+            }
+        }
+
+        // Carregar casas (proprietário)
+        async function loadCasas() {
+            try {
+                const response = await fetch(`${API_URL}?action=get_casas`);
+                const data = await response.json();
+
+                if (data.casas && data.casas.length > 0) {
+                    const select = document.getElementById('casaFilter');
+                    data.casas.forEach(casa => {
+                        const option = document.createElement('option');
+                        option.value = casa.id;
+                        option.textContent = casa.titulo;
+                        select.appendChild(option);
+                    });
+                    document.getElementById('casa-filter-group').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar casas:', error);
+            }
+        }
+
+        // Renderizar tabela de reservas
+        function renderReservas(reservas) {
+            const container = document.getElementById('reservas-content');
+
+            if (reservas.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-times"></i>
+                        <h3>Nenhuma reserva encontrada</h3>
+                        <p>${USER_TYPE === 'proprietario' ? 'Ainda não há reservas para suas propriedades.' : 'Você ainda não fez nenhuma reserva.'}</p>
+                        ${USER_TYPE === 'arrendatario' ? `
+                            <a href="../pesquisa.php" class="filtro-btn" style="margin-top: 15px;">
+                                <i class="fas fa-search"></i> Buscar Alojamentos
+                            </a>
+                        ` : ''}
+                    </div>
+                `;
+                return;
+            }
+
+            const statusMap = {
+                pendente: 'Pendente',
+                confirmada: 'Confirmada',
+                concluida: 'Concluída',
+                cancelada: 'Cancelada',
+                rejeitada: 'Rejeitada'
+            };
+
+            let html = `
+                <table class="reservas-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Propriedade</th>
+                            ${USER_TYPE === 'proprietario' ? '<th>Arrendatário</th>' : '<th>Proprietário</th>'}
+                            <th>Datas</th>
+                            <th>Status</th>
+                            <th>Valor</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            reservas.forEach(reserva => {
+                const podeConcluir = reserva.status === 'confirmada' && new Date(reserva.data_checkout) <= new Date();
+
+
+                html += `
+                    <tr>
+                        <td class="reserva-id">#${String(reserva.id).padStart(5, '0')}</td>
+                        <td>
+                            <div class="reserva-casa">${escapeHtml(reserva.casa_titulo)}</div>
+                        </td>
+                        <td>
+                            ${USER_TYPE === 'proprietario' ? `
+                                <div>${escapeHtml(reserva.arrendatario_nome)}</div>
+                                <div style="font-size: 0.8em; color: #666;">${escapeHtml(reserva.arrendatario_email || '')}</div>
+                            ` : `
+                                <div>${escapeHtml(reserva.proprietario_nome)}</div>
+                            `}
+                        </td>
+                        <td>
+                            <div class="reserva-datas">
+                                <div><strong>Check-in:</strong> ${formatDate(reserva.data_checkin)}</div>
+                                <div><strong>Check-out:</strong> ${formatDate(reserva.data_checkout)}</div>
+                                <div><strong>Noites:</strong> ${reserva.noites}</div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="reserva-status status-${reserva.status}">
+                                ${statusMap[reserva.status] || reserva.status}
+                            </span>
+                        </td>
+                        <td class="reserva-valor">${parseFloat(reserva.total).toFixed(2).replace('.', ',')}€</td>
+                        <td>
+                            <div class="reserva-acoes">
+                                <button class="acao-btn btn-detalhes" onclick='showReservaDetails(${JSON.stringify(reserva)})'>
+                                    <i class="fas fa-eye"></i>
+                                </button>
+
+                                ${USER_TYPE === 'proprietario' ? `
+                                    ${reserva.status === 'pendente' ? `
+                                        <button class="acao-btn btn-confirmar" onclick="handleReservaAction('confirmar', ${reserva.id})">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <button class="acao-btn btn-cancelar" onclick="handleReservaAction('rejeitar', ${reserva.id})">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    ` : ''}
+                                    ${podeConcluir ? `
+                                        <button class="acao-btn btn-concluir" onclick="handleReservaAction('concluir', ${reserva.id})">
+                                            <i class="fas fa-flag-checkered"></i>
+                                        </button>
+                                    ` : ''}
+                                ` : `
+                                    ${(reserva.status === 'pendente' || reserva.status === 'confirmada') ? `
+                                        <button class="acao-btn btn-cancelar" onclick="handleReservaAction('cancel', ${reserva.id})">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    ` : ''}
+                                `}
+
+                                <button class="acao-btn btn-mensagem" onclick="window.location.href='../mensagens.php?reserva_id=${reserva.id}'">
+                                    <i class="fas fa-envelope"></i>
+                                </button>
+
+                                <button class="acao-btn btn-detalhes" onclick="handleReservaAction('eliminar', ${reserva.id})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+                <div class="pagination">
+                    <button class="page-btn active">1</button>
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // Ações em reservas
+        async function handleReservaAction(action, reservaId) {
+            const confirmMessages = {
+                confirmar: 'Confirmar esta reserva?',
+                cancel: 'Cancelar esta reserva?',
+                concluir: 'Marcar como concluída?',
+                rejeitar: 'Rejeitar esta reserva?',
+                eliminar: 'Tem certeza que deseja ELIMINAR permanentemente esta reserva?'
+            };
+
+            if (!confirm(confirmMessages[action])) {
+                return;
+            }
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action,
+                        reserva_id: reservaId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showSuccess(data.message);
+                    loadReservas();
+                } else {
+                    showError(data.error || 'Erro ao processar ação');
+                }
+            } catch (error) {
+                showError('Erro de comunicação. Tente novamente.');
+                console.error('Error:', error);
+            }
+        }
+
+        // Filtros
+        function filterByStatus(status) {
+            currentFiltro = status;
+
+            // Atualizar botões ativos
+            document.querySelectorAll('.status-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.status === status);
+            });
+
+            loadReservas();
+        }
+
+        function applyFilters() {
+            currentCasaId = document.getElementById('casaFilter')?.value || '';
+            currentPeriodo = document.getElementById('periodoFilter').value;
+            loadReservas();
+        }
+
+        // Modal
+        function showReservaDetails(reserva) {
+            const statusMap = {
+                pendente: 'Pendente',
+                confirmada: 'Confirmada',
+                concluida: 'Concluída',
+                cancelada: 'Cancelada',
+                rejeitada: 'Rejeitada'
+            };
+
+            const content = `
+                <div class="modal-detalhes">
+                    <div class="detalhe-item">
+                        <div class="detalhe-label">ID da Reserva</div>
+                        <div class="detalhe-valor">#${String(reserva.id).padStart(5, '0')}</div>
+                    </div>
+                    <div class="detalhe-item">
+                        <div class="detalhe-label">Propriedade</div>
+                        <div class="detalhe-valor">${escapeHtml(reserva.casa_titulo)}</div>
+                    </div>
+                    <div class="detalhe-item">
+                        <div class="detalhe-label">Check-in</div>
+                        <div class="detalhe-valor">${formatDate(reserva.data_checkin)}</div>
+                    </div>
+                    <div class="detalhe-item">
+                        <div class="detalhe-label">Check-out</div>
+                        <div class="detalhe-valor">${formatDate(reserva.data_checkout)}</div>
+                    </div>
+                    <div class="detalhe-item">
+                        <div class="detalhe-label">Noites</div>
+                        <div class="detalhe-valor">${reserva.noites}</div>
+                    </div>
+                    <div class="detalhe-item">
+                        <div class="detalhe-label">Hóspedes</div>
+                        <div class="detalhe-valor">${reserva.total_hospedes}</div>
+                    </div>
+                    <div class="detalhe-item">
+                        <div class="detalhe-label">Status</div>
+                        <div class="detalhe-valor">${statusMap[reserva.status] || reserva.status}</div>
+                    </div>
+                    <div class="detalhe-item">
+                        <div class="detalhe-label">Data da Reserva</div>
+                        <div class="detalhe-valor">${formatDateTime(reserva.data_reserva)}</div>
+                    </div>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                    <h4>Valores</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>Preço por noite: <strong>${parseFloat(reserva.preco_noite).toFixed(2)}€</strong></div>
+                        <div>Subtotal: <strong>${parseFloat(reserva.subtotal).toFixed(2)}€</strong></div>
+                        <div>Taxa de limpeza: <strong>${parseFloat(reserva.taxa_limpeza).toFixed(2)}€</strong></div>
+                        <div>Taxa de segurança: <strong>${parseFloat(reserva.taxa_seguranca).toFixed(2)}€</strong></div>
+                        <div style="grid-column: 1 / -1; border-top: 1px solid #ddd; padding-top: 10px; margin-top: 5px;">
+                            <strong>Total: ${parseFloat(reserva.total).toFixed(2)}€</strong>
+                        </div>
+                    </div>
+                </div>
+                
+                ${reserva.notas ? `
+                    <div style="margin-bottom: 20px;">
+                        <h4>Notas</h4>
+                        <p>${escapeHtml(reserva.notas)}</p>
+                    </div>
+                ` : ''}
+            `;
+
+            document.getElementById('modalDetailsContent').innerHTML = content;
+            document.getElementById('detailsModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('detailsModal').style.display = 'none';
+        }
+
+        // Utilitários
+        function showError(message) {
+            const container = document.getElementById('message-container');
+            container.innerHTML = `<div class="error-message">${escapeHtml(message)}</div>`;
+            setTimeout(() => container.innerHTML = '', 5000);
+        }
+
+        function showSuccess(message) {
+            const container = document.getElementById('message-container');
+            container.innerHTML = `<div class="success-message">${escapeHtml(message)}</div>`;
+            setTimeout(() => container.innerHTML = '', 5000);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('pt-PT');
+        }
+
+
+        function formatDateTime(dateTimeStr) {
+            if (!dateTimeStr) return '';
+            const date = new Date(dateTimeStr);
+            return date.toLocaleString('pt-PT');
+        }
+
+
+        // Fechar modal ao clicar fora
+        document.getElementById('detailsModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+    </script>
 </body>
 
 </html>
