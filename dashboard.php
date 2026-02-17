@@ -36,7 +36,8 @@ if ($tipo_utilizador === 'proprietario') {
     $result_reservas = $query_reservas->get_result();
     $total_reservas = $result_reservas->fetch_assoc()['total_reservas'] ?? 0;
 
-    $query_receita = $conn->prepare("SELECT SUM(r.total) as total_receita FROM reservas r JOIN casas c ON r.casa_id = c.id WHERE c.proprietario_id = ? AND r.status = 'concluida'");
+    $query_receita = $conn->prepare("SELECT SUM(r.total) as total_receita FROM reservas r JOIN casas c ON r.casa_id = c.id WHERE c.proprietario_id = ? AND r.status NOT IN ('cancelada', 'rejeitada')");
+
     $query_receita->bind_param("i", $user_id);
     $query_receita->execute();
     $result_receita = $query_receita->get_result();
@@ -58,7 +59,8 @@ if ($tipo_utilizador === 'proprietario') {
     $query_reservas_ativas->execute();
     $reservas_ativas = $query_reservas_ativas->get_result()->fetch_assoc()['reservas_ativas'] ?? 0;
 
-    $query_total_gasto = $conn->prepare("SELECT SUM(total) as total_gasto FROM reservas WHERE arrendatario_id = ? AND status = 'concluida'");
+    $query_total_gasto = $conn->prepare("SELECT SUM(total) as total_gasto FROM reservas WHERE arrendatario_id = ? AND status NOT IN ('cancelada', 'rejeitada')");
+
     $query_total_gasto->bind_param("i", $user_id);
     $query_total_gasto->execute();
     $total_gasto = $query_total_gasto->get_result()->fetch_assoc()['total_gasto'] ?? 0;
@@ -145,43 +147,8 @@ if ($tipo_utilizador === 'proprietario') {
 
     <?php include 'footer.php'; ?>
 
-    <script src="backend/script.js"></script> <!-- sidebar script moved to sidebar.php -->
+    <script src="js/script.js"></script>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const profileToggle = document.getElementById("profile-toggle");
-            const sidebar = document.getElementById("sidebar");
-            const sidebarOverlay = document.getElementById("sidebar-overlay");
-            const closeSidebar = document.getElementById("close-sidebar");
-
-            if (profileToggle) {
-                profileToggle.addEventListener("click", function(event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    sidebar.classList.toggle("active");
-                    sidebarOverlay.classList.toggle("active");
-                });
-            }
-
-            if (closeSidebar) {
-                closeSidebar.addEventListener("click", function() {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                });
-            }
-
-            // Close sidebar when clicking outside
-            document.addEventListener("click", function(event) {
-                if (
-                    !sidebar.contains(event.target) &&
-                    !profileToggle.contains(event.target)
-                ) {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                }
-            });
-        });
-    </script>
 </body>
 
 </html>

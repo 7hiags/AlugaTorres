@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 try {
                     $userEmailResult = sendEmail($email, $subjectUser, $bodyUser);
-                } catch (Exception $e) {
+                } catch (\Exception $e) {
                     // Não bloquear o fluxo de registo se o email falhar
                 }
 
@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 try {
                     $adminEmailResult = sendEmail($adminEmail, $subjectAdmin, $bodyAdmin);
-                } catch (Exception $e) {
+                } catch (\Exception $e) {
                     // Ignorar falhas de email para não bloquear o registo
                 }
 
@@ -232,7 +232,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <?php include '../footer.php'; ?>
 
-    <script src="script.js"></script> <!-- sidebar script moved to sidebar.php -->
+    <script src="../js/script.js"></script>
+
 </body>
 
 </html>

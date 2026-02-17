@@ -29,7 +29,7 @@ function sendEmail($to, $subject, $body, $from = null)
     $sent = false;
     try {
         $sent = (bool) @mail($to, $subject, $body, $headers);
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         $sent = false;
     }
 

@@ -1,8 +1,10 @@
 <?php
 session_start();
 require_once '../backend/db.php';
+require_once '../backend/upload_handler.php';
 
 // Verificar se é proprietário
+
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['tipo_utilizador']) || $_SESSION['tipo_utilizador'] !== 'proprietario') {
     header("Location: backend/login.php");
     exit;
@@ -52,12 +54,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Validações básicas
         if (empty($titulo) || empty($morada) || empty($preco_noite)) {
-            throw new Exception('Preencha todos os campos obrigatórios');
+            throw new \Exception('Preencha todos os campos obrigatórios');
         }
 
         if ($preco_noite <= 0) {
-            throw new Exception('Preço por noite deve ser maior que zero');
+            throw new \Exception('Preço por noite deve ser maior que zero');
         }
+
 
         // Inserir no banco
         $stmt = $conn->prepare("
@@ -97,13 +100,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($stmt->execute()) {
             $casa_id = $stmt->insert_id;
+
+            // Processar upload de fotos
+            if (isset($_FILES['fotos']) && !empty($_FILES['fotos']['name'][0])) {
+                $resultado_fotos = uploadFotosCasa($_FILES['fotos'], $casa_id);
+
+                if ($resultado_fotos['sucesso']) {
+                    // Atualizar fotos na base de dados
+                    atualizarFotosCasa($conn, $casa_id, $resultado_fotos['fotos']);
+                }
+            }
+
             $success = 'Casa adicionada com sucesso!';
             header("Location: editar_casa.php?id=$casa_id&success=1");
             exit;
         } else {
-            throw new Exception('Erro ao salvar no banco de dados: ' . $conn->error);
+            throw new \Exception('Erro ao salvar no banco de dados: ' . $conn->error);
         }
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
         $error = $e->getMessage();
     }
 }
@@ -123,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php include '../header.php'; ?>
     <?php include '../sidebar.php'; ?>
 
-    <div class="form-container">
+    <div class="form-container-casa">
         <div class="form-header">
             <h1 class="form-title">Adicionar Nova Casa</h1>
             <p class="form-subtitle">Preencha os detalhes da sua propriedade para começar a receber reservas</p>
@@ -195,7 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="form-grid">
                     <div class="form-group">
-                        <label>Código Postal</label>
+                        <label>Código Postal <span class="required">*</span></label>
                         <input type="text" name="codigo_postal" class="form-control"
                             placeholder="Ex: 2350-000"
                             value="<?php echo isset($_POST['codigo_postal']) ? htmlspecialchars($_POST['codigo_postal']) : ''; ?>">
@@ -365,13 +379,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
-            <!-- Seção 5: Comodidades -->
+            <!-- Seção 5: Fotos da Propriedade -->
+            <div class="form-section">
+                <h2 class="section-title"><i class="fas fa-images"></i> Fotos da Propriedade</h2>
+
+                <div class="form-group">
+                    <label>Selecionar Fotos (máximo 7)</label>
+                    <div class="fotos-upload-area" id="fotosUploadArea">
+                        <input type="file" name="fotos[]" id="fotosInput" multiple accept="image/jpeg,image/png,image/jpg,image/webp" style="display: none;" onchange="handleFotosSelect(this)">
+                        <div class="fotos-placeholder" onclick="document.getElementById('fotosInput').click()">
+                            <i class="fas fa-cloud-upload-alt fa-3x"></i>
+                            <p>Clique para selecionar fotos</p>
+                            <small>Formatos: JPG, PNG, WebP | Máx: 5MB cada | Máx: 7 fotos</small>
+                        </div>
+                    </div>
+                    <div id="fotosPreview" class="fotos-preview-grid"></div>
+                    <div id="fotosCount" class="fotos-count">0 de 7 fotos selecionadas</div>
+                </div>
+            </div>
+
+            <!-- Seção 6: Comodidades -->
             <div class="form-section">
                 <h2 class="section-title"><i class="fas fa-star"></i> Comodidades</h2>
 
                 <p>Selecione as comodidades disponíveis na sua propriedade:</p>
 
                 <div class="checkbox-grid">
+
                     <?php
                     $comodidades = [
                         'wifi' => 'Wi-Fi',
@@ -421,67 +455,117 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <?php include '../footer.php'; ?>
 
-    <script src="../backend/script.js"></script>
+    <script src="../js/script.js"></script>
+
+
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const profileToggle = document.getElementById("profile-toggle");
-            const sidebar = document.getElementById("sidebar");
-            const sidebarOverlay = document.getElementById("sidebar-overlay");
-            const closeSidebar = document.getElementById("close-sidebar");
+        // Variáveis para gestão de fotos
+        let fotosSelecionadas = [];
+        const MAX_FOTOS = 7;
 
-            if (profileToggle) {
-                profileToggle.addEventListener("click", function(event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    sidebar.classList.toggle("active");
-                    sidebarOverlay.classList.toggle("active");
-                });
+        function handleFotosSelect(input) {
+            const files = Array.from(input.files);
+            const previewContainer = document.getElementById('fotosPreview');
+            const countDisplay = document.getElementById('fotosCount');
+
+            // Verificar limite
+            if (fotosSelecionadas.length + files.length > MAX_FOTOS) {
+                alert('Máximo de ' + MAX_FOTOS + ' fotos permitido.');
+                return;
             }
 
-            if (closeSidebar) {
-                closeSidebar.addEventListener("click", function() {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                });
-            }
-
-            // Close sidebar when clicking outside
-            document.addEventListener("click", function(event) {
-                if (
-                    !sidebar.contains(event.target) &&
-                    !profileToggle.contains(event.target)
-                ) {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
+            // Validar e adicionar fotos
+            files.forEach(file => {
+                // Validar tamanho (5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('A foto ' + file.name + ' excede 5MB.');
+                    return;
                 }
+
+                // Validar tipo
+                const tiposPermitidos = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+                if (!tiposPermitidos.includes(file.type)) {
+                    alert('Tipo de arquivo não permitido: ' + file.name);
+                    return;
+                }
+
+                fotosSelecionadas.push(file);
             });
+
+            atualizarPreview();
+            atualizarInputFiles();
+        }
+
+        function atualizarPreview() {
+            const previewContainer = document.getElementById('fotosPreview');
+            const countDisplay = document.getElementById('fotosCount');
+
+            previewContainer.innerHTML = '';
+
+            fotosSelecionadas.forEach((file, index) => {
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    const div = document.createElement('div');
+                    div.className = 'foto-preview-item';
+                    div.innerHTML = `
+                        <img src="${e.target.result}" alt="Foto ${index + 1}">
+                        <button type="button" class="foto-remove-btn" onclick="removerFoto(${index})" title="Remover foto">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <span class="foto-numero">${index + 1}</span>
+                    `;
+                    previewContainer.appendChild(div);
+                };
+
+                reader.readAsDataURL(file);
+            });
+
+            countDisplay.textContent = fotosSelecionadas.length + ' de ' + MAX_FOTOS + ' fotos selecionadas';
+        }
+
+        function removerFoto(index) {
+            fotosSelecionadas.splice(index, 1);
+            atualizarPreview();
+            atualizarInputFiles();
+        }
+
+        function atualizarInputFiles() {
+            const input = document.getElementById('fotosInput');
+            const dataTransfer = new DataTransfer();
+
+            fotosSelecionadas.forEach(file => {
+                dataTransfer.items.add(file);
+            });
+
+            input.files = dataTransfer.files;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Função para combinar hora e minuto nos campos hidden
+            function updateTimeFields() {
+
+                // Check-in
+                const checkinHora = document.querySelector('select[name="hora_checkin_hora"]').value;
+                const checkinMinuto = document.querySelector('select[name="hora_checkin_minuto"]').value;
+                const checkinHidden = document.getElementById('hora_checkin_hidden');
+                checkinHidden.value = checkinHora.padStart(2, '0') + ':' + checkinMinuto;
+
+                // Check-out
+                const checkoutHora = document.querySelector('select[name="hora_checkout_hora"]').value;
+                const checkoutMinuto = document.querySelector('select[name="hora_checkout_minuto"]').value;
+                const checkoutHidden = document.getElementById('hora_checkout_hidden');
+                checkoutHidden.value = checkoutHora.padStart(2, '0') + ':' + checkoutMinuto;
+            }
+
+            // Adicionar event listeners aos selects de hora
+            document.querySelectorAll('select[name*="hora_checkin"], select[name*="hora_checkout"]').forEach(select => {
+                select.addEventListener('change', updateTimeFields);
+            });
+
+            // Inicializar valores
+            updateTimeFields();
         });
-    </script>
-
-    document.addEventListener('DOMContentLoaded', function() {
-    // Função para combinar hora e minuto nos campos hidden
-    function updateTimeFields() {
-    // Check-in
-    const checkinHora = document.querySelector('select[name="hora_checkin_hora"]').value;
-    const checkinMinuto = document.querySelector('select[name="hora_checkin_minuto"]').value;
-    const checkinHidden = document.getElementById('hora_checkin_hidden');
-    checkinHidden.value = checkinHora.padStart(2, '0') + ':' + checkinMinuto;
-
-    // Check-out
-    const checkoutHora = document.querySelector('select[name="hora_checkout_hora"]').value;
-    const checkoutMinuto = document.querySelector('select[name="hora_checkout_minuto"]').value;
-    const checkoutHidden = document.getElementById('hora_checkout_hidden');
-    checkoutHidden.value = checkoutHora.padStart(2, '0') + ':' + checkoutMinuto;
-    }
-
-    // Adicionar event listeners aos selects de hora
-    document.querySelectorAll('select[name*="hora_checkin"], select[name*="hora_checkout"]').forEach(select => {
-    select.addEventListener('change', updateTimeFields);
-    });
-
-    // Inicializar valores
-    updateTimeFields();
-    });
     </script>
 </body>
 

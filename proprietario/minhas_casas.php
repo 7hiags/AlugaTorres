@@ -53,15 +53,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $query = $conn->prepare("
     SELECT c.*, 
            COUNT(r.id) as total_reservas,
-           SUM(CASE WHEN r.status = 'concluida' THEN r.total ELSE 0 END) as receita_total,
-           AVG(a.classificacao) as avaliacao_media
+           SUM(CASE WHEN r.status NOT IN ('cancelada', 'rejeitada') THEN r.total ELSE 0 END) as receita_total
     FROM casas c
     LEFT JOIN reservas r ON c.id = r.casa_id
-    LEFT JOIN avaliacoes a ON r.id = a.reserva_id
     WHERE c.proprietario_id = ?
     GROUP BY c.id
     ORDER BY c.data_criacao DESC
 ");
+
+
 $query->bind_param("i", $user_id);
 $query->execute();
 $result = $query->get_result();
@@ -72,7 +72,7 @@ $result = $query->get_result();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minhas Casas - AlugaTorres</title>
+    <title>AlugaTorres | Minhas Casas</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="../style/style.css">
     <link rel="website icon" type="png" href="../style/img/Logo_AlugaTorres_branco.png">
@@ -101,9 +101,9 @@ $result = $query->get_result();
         <?php if ($result->num_rows > 0): ?>
             <div class="casas-grid" id="casasGrid">
                 <?php while ($casa = $result->fetch_assoc()):
-                    $avaliacao = $casa['avaliacao_media'] ? number_format($casa['avaliacao_media'], 1) : 'N/A';
                     $fotos = $casa['fotos'] ? json_decode($casa['fotos'], true) : [];
                 ?>
+
                     <div class="casa-card"
                         data-disponivel="<?php echo $casa['disponivel'] ? 'sim' : 'nao'; ?>"
                         data-destaque="<?php echo $casa['destaque'] ? 'sim' : 'nao'; ?>">
@@ -131,11 +131,8 @@ $result = $query->get_result();
                         <div class="casa-conteudo">
                             <div class="casa-header">
                                 <h3 class="casa-titulo"><?php echo htmlspecialchars($casa['titulo']); ?></h3>
-                                <div class="casa-avaliacao">
-                                    <i class="fas fa-star"></i>
-                                    <span><?php echo $avaliacao; ?></span>
-                                </div>
                             </div>
+
 
                             <div class="casa-info">
                                 <div class="info-item">
@@ -165,17 +162,14 @@ $result = $query->get_result();
                                     <span class="metrica-valor"><?php echo number_format($casa['receita_total'] ?? 0, 0, ',', ' '); ?>€</span>
                                     <span class="metrica-label">Receita</span>
                                 </div>
-                                <div class="metrica">
-                                    <span class="metrica-valor"><?php echo $avaliacao; ?></span>
-                                    <span class="metrica-label">Avaliação</span>
-                                </div>
                             </div>
+
 
                             <div class="casa-acoes">
                                 <button class="acao-btn btn-editar" onclick="window.location.href='editar_casa.php?id=<?php echo $casa['id']; ?>'">
                                     <i class="fas fa-edit"></i> Editar
                                 </button>
-                                <button class="acao-btn btn-calendario" onclick="window.location.href='calendario.php?casa_id=<?php echo $casa['id']; ?>'">
+                                <button class="acao-btn btn-calendario" onclick="window.location.href='../calendario.php?casa_id=<?php echo $casa['id']; ?>'">
                                     <i class="fas fa-calendar-alt"></i> Calendário
                                 </button>
                                 <button class="acao-btn btn-reservas" onclick="window.location.href='../arrendatario/reservas.php?casa_id=<?php echo $casa['id']; ?>'">
@@ -251,50 +245,9 @@ $result = $query->get_result();
 
     <?php include '../footer.php'; ?>
 
-    <script src="../backend/script.js"></script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const profileToggle = document.getElementById("profile-toggle");
-            const sidebar = document.getElementById("sidebar");
-            const sidebarOverlay = document.getElementById("sidebar-overlay");
-            const closeSidebar = document.getElementById("close-sidebar");
+    <script src="../js/script.js"></script>
 
-            if (profileToggle) {
-                profileToggle.addEventListener("click", function(event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    sidebar.classList.toggle("active");
-                    sidebarOverlay.classList.toggle("active");
-                });
-            }
-
-            if (closeSidebar) {
-                closeSidebar.addEventListener("click", function() {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                });
-            }
-
-            // Close sidebar when clicking outside
-            document.addEventListener("click", function(event) {
-                if (
-                    !sidebar.contains(event.target) &&
-                    !profileToggle.contains(event.target)
-                ) {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                }
-            });
-        });
-    </script>
-
-    if (closeSidebar) {
-    closeSidebar.addEventListener('click', function() {
-    closeAll();
-    });
-    }
-    });
-    </script>
 </body>
+
 
 </html>

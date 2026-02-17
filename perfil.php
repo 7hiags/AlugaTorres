@@ -1,8 +1,10 @@
 <?php
 session_start();
 require_once 'backend/db.php';
+require_once 'backend/upload_handler.php';
 
 if (!isset($_SESSION['user_id'])) {
+
     header("Location: backend/login.php");
     exit;
 }
@@ -32,36 +34,32 @@ if ($tipo_utilizador === 'proprietario') {
     $stmt->execute();
     $stats['propriedades'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
 
-    // Reservas Totais
-    $stmt = $conn->prepare("SELECT COUNT(*) as total FROM reservas r JOIN casas c ON r.casa_id = c.id WHERE c.proprietario_id = ?");
+    // Reservas Totais (excluir canceladas e rejeitadas)
+    $stmt = $conn->prepare("SELECT COUNT(*) as total FROM reservas r JOIN casas c ON r.casa_id = c.id WHERE c.proprietario_id = ? AND r.status NOT IN ('cancelada', 'rejeitada')");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $stats['reservas_totais'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
 
-    // Avaliação Média (se existir tabela de avaliações)
-    $stats['avaliacao_media'] = 'N/A'; // Placeholder até implementar avaliações
 
-    // Receita Total
-    $stmt = $conn->prepare("SELECT SUM(r.total) as total FROM reservas r JOIN casas c ON r.casa_id = c.id WHERE c.proprietario_id = ? AND r.status = 'concluida'");
+    // Receita Total (todas as reservas exceto canceladas e rejeitadas)
+    $stmt = $conn->prepare("SELECT SUM(r.total) as total FROM reservas r JOIN casas c ON r.casa_id = c.id WHERE c.proprietario_id = ? AND r.status NOT IN ('cancelada', 'rejeitada')");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $receita_total = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
     $stats['receita_total'] = '€' . number_format($receita_total, 2, ',', '.');
 } else {
-    // Reservas Feitas
-    $stmt = $conn->prepare("SELECT COUNT(*) as total FROM reservas WHERE arrendatario_id = ?");
+    // Reservas Feitas (excluir canceladas e rejeitadas)
+    $stmt = $conn->prepare("SELECT COUNT(*) as total FROM reservas WHERE arrendatario_id = ? AND status NOT IN ('cancelada', 'rejeitada')");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $stats['reservas_feitas'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
 
+
     // Favoritos (se existir tabela de favoritos)
     $stats['favoritos'] = 0; // Placeholder até implementar favoritos
 
-    // Avaliações (se existir tabela de avaliações)
-    $stats['avaliacoes'] = 0; // Placeholder até implementar avaliações
-
-    // Total Gastos
-    $stmt = $conn->prepare("SELECT SUM(total) as total FROM reservas WHERE arrendatario_id = ? AND status = 'concluida'");
+    // Total Gastos (todas as reservas exceto canceladas e rejeitadas)
+    $stmt = $conn->prepare("SELECT SUM(total) as total FROM reservas WHERE arrendatario_id = ? AND status NOT IN ('cancelada', 'rejeitada')");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $total_gastos = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
@@ -123,9 +121,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Erro ao alterar senha: ' . $conn->error;
             }
         }
+    } elseif ($action === 'update_photo') {
+
+        // Processar upload de foto de perfil
+        if (isset($_FILES['foto_perfil']) && $_FILES['foto_perfil']['error'] !== UPLOAD_ERR_NO_FILE) {
+            $resultado = uploadFotoPerfil($_FILES['foto_perfil'], $user_id);
+
+            if ($resultado['sucesso']) {
+                // Remover foto antiga se existir
+                $foto_antiga = obterFotoPerfil($conn, $user_id);
+                if ($foto_antiga) {
+                    removerFoto($foto_antiga);
+                }
+
+                // Atualizar na base de dados
+                if (atualizarFotoPerfil($conn, $user_id, $resultado['caminho'])) {
+                    $success = 'Foto de perfil atualizada com sucesso!';
+                    $user_data['foto_perfil'] = $resultado['caminho'];
+                } else {
+                    $error = 'Erro ao guardar foto na base de dados.';
+                }
+            } else {
+                $error = implode(', ', $resultado['erros']);
+            }
+        } else {
+            $error = 'Nenhuma foto selecionada.';
+        }
+    } elseif ($action === 'remove_photo') {
+        // Remover foto de perfil
+        $foto_atual = obterFotoPerfil($conn, $user_id);
+        if ($foto_atual) {
+            removerFoto($foto_atual);
+            atualizarFotoPerfil($conn, $user_id, null);
+            $success = 'Foto de perfil removida com sucesso!';
+            $user_data['foto_perfil'] = null;
+        }
     }
 }
+
+// Obter foto de perfil atual
+$foto_perfil = $user_data['foto_perfil'] ?? null;
 ?>
+
 <!DOCTYPE html>
 <html lang="pt">
 
@@ -161,10 +198,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="profile-grid">
             <div class="profile-sidebar">
                 <div class="profile-avatar">
-                    <div class="avatar-circle">
-                        <i class="fas fa-user"></i>
+                    <div class="avatar-circle" id="sidebar-avatar">
+                        <?php if ($foto_perfil && file_exists($foto_perfil)): ?>
+                            <img src="<?php echo htmlspecialchars($foto_perfil); ?>" alt="Foto de perfil" class="avatar-image">
+                        <?php else: ?>
+                            <i class="fas fa-user"></i>
+                        <?php endif; ?>
                     </div>
+
                     <div class="user-name"><?php echo htmlspecialchars($user_name); ?></div>
+
                     <div class="user-type">
                         <?php echo $tipo_utilizador === 'proprietario' ? '🏠 Proprietário' : '👤 Arrendatário'; ?>
                     </div>
@@ -178,10 +221,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <li>
                         <?php if ($tipo_utilizador === 'proprietario'): ?>
                     <li><a href="#minhas-casas">
-                            <i class="fas fa-home"></i> Minhas Casas
+                            <i class="fas fa-home"></i> Minhas Propriedades
                         </a>
                     </li>
-                <?php else: ?>
+                <?php elseif ($tipo_utilizador === 'arrendatario'): ?>
                     <a href="#minhas-reservas">
                         <i class="fas fa-calendar-check"></i> Minhas Reservas
                     </a>
@@ -191,10 +234,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <i class="fas fa-lock"></i> Alterar Senha
                     </a>
                 </li>
-                <li><a href="#configuracoes">
-                        <i class="fas fa-cog"></i> Configurações
+                <li><a href="definicoes.php">
+                        <i class="fas fa-cog"></i> Definições
                     </a>
                 </li>
+
                 </ul>
 
                 <div style="align-items: center;margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
@@ -220,13 +264,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <span class="stat-label">Reservas Totais</span>
                             </div>
                             <div class="stat-card">
-                                <span class="stat-number"><?php echo $stats['avaliacao_media']; ?></span>
-                                <span class="stat-label">Avaliação Média</span>
-                            </div>
-                            <div class="stat-card">
                                 <span class="stat-number"><?php echo $stats['receita_total']; ?></span>
                                 <span class="stat-label">Receita Total</span>
                             </div>
+
                         </div>
                     <?php else: ?>
                         <div class="stats-grid">
@@ -239,13 +280,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <span class="stat-label">Favoritos</span>
                             </div>
                             <div class="stat-card">
-                                <span class="stat-number"><?php echo $stats['avaliacoes']; ?></span>
-                                <span class="stat-label">Avaliações</span>
-                            </div>
-                            <div class="stat-card">
                                 <span class="stat-number"><?php echo $stats['total_gastos']; ?></span>
                                 <span class="stat-label">Total Gastos</span>
                             </div>
+
                         </div>
                     <?php endif; ?>
 
@@ -291,7 +329,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <i class="fas fa-save"></i> Guardar Alterações
                         </button>
                     </form>
+
+                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+
+                    <!-- Secção de Foto de Perfil -->
+                    <h3 class="section-subtitle"><i class="fas fa-camera"></i> Foto de Perfil</h3>
+
+                    <form method="POST" action="perfil.php" enctype="multipart/form-data" class="photo-form">
+                        <input type="hidden" name="action" value="update_photo">
+
+                        <div class="photo-upload-area">
+                            <div class="current-photo">
+                                <?php if ($foto_perfil && file_exists($foto_perfil)): ?>
+                                    <img src="<?php echo htmlspecialchars($foto_perfil); ?>" alt="Foto atual" class="photo-preview">
+                                <?php else: ?>
+                                    <div class="photo-placeholder">
+                                        <i class="fas fa-user fa-3x"></i>
+                                        <p>Sem foto de perfil</p>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+
+                            <div class="photo-actions">
+                                <div class="form-group">
+                                    <label class="form-label">Selecionar nova foto</label>
+                                    <input type="file" name="foto_perfil" class="form-input" accept="image/jpeg,image/png,image/jpg,image/webp" onchange="previewPhoto(this)">
+                                    <small class="form-hint">Formatos aceites: JPG, PNG, WebP. Tamanho máximo: 5MB.</small>
+                                </div>
+
+                                <div id="photo-preview-container" class="photo-preview-container" style="display: none;">
+                                    <p>Pré-visualização:</p>
+                                    <img id="photo-preview-img" src="" alt="Pré-visualização" class="photo-preview">
+                                </div>
+
+                                <div class="photo-buttons">
+                                    <button type="submit" class="btn-save btn-photo">
+                                        <i class="fas fa-upload"></i> Atualizar Foto
+                                    </button>
+
+                                    <?php if ($foto_perfil): ?>
+                                        <button type="submit" name="action" value="remove_photo" class="btn-danger btn-photo-remove" onclick="return confirm('Tem certeza que deseja remover a foto de perfil?')">
+                                            <i class="fas fa-trash"></i> Remover Foto
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
                 </section>
+
 
                 <hr style="margin: 40px 0; border: none; border-top: 1px solid #eee;">
 
@@ -348,6 +434,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                     </section>
+                <?php elseif ($tipo_utilizador === 'arrendatario'): ?>
+                    <hr style="margin: 40px 0; border: none; border-top: 1px solid #eee;">
+
+                    <!-- Área do Arrendatário -->
+                    <section id="minhas-reservas">
+                        <h2 class="section-title"><i class="fas fa-calendar-check"></i> Minhas Reservas</h2>
+
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                            <h3 style="margin-top: 0;">Gestão de Reservas</h3>
+                            <p>Gerencie suas reservas e acompanhe o status das mesmas.</p>
+
+                            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                                <a href="arrendatario/reservas.php" class="btn-save btn-success">
+                                    <i class="fas fa-list"></i> Ver Minhas Reservas
+                                </a>
+                            </div>
+                        </div>
+                    </section>
                 <?php endif; ?>
 
                 <!-- Zona de Perigo -->
@@ -363,72 +467,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
-    <footer>
-        <div class="footer-content">
-            <div class="footer-section">
-                <h4>AlugaTorres</h4>
-                <p>Sua plataforma de arrendamento em Torres Novas</p>
-            </div>
-            <div class="footer-section">
-                <h4>Ajuda</h4>
-                <ul>
-                    <li><a href="#">Central de Ajuda</a></li>
-                    <li><a href="#">Contactar Suporte</a></li>
-                    <li><a href="#">Política de Privacidade</a></li>
-                </ul>
-            </div>
-            <div class="footer-section">
-                <h4>Contactos</h4>
-                <p><i class="fas fa-map-marker-alt"></i> Torres Novas, Portugal</p>
-                <p><i class="fas fa-phone"></i> +351 929 326 577</p>
-                <p><i class="fas fa-envelope"></i> suporte@alugatorres.pt</p>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <p>&copy; <span id="ano"></span> AlugaTorres. Todos os direitos reservados.</p>
-        </div>
-    </footer>
+    <?php include 'footer.php'; ?>
 
-    <script src="backend/script.js"></script>
+    <script src="js/script.js"></script>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const profileToggle = document.getElementById("profile-toggle");
-            const sidebar = document.getElementById("sidebar");
-            const sidebarOverlay = document.getElementById("sidebar-overlay");
-            const closeSidebar = document.getElementById("close-sidebar");
-
-            if (profileToggle) {
-                profileToggle.addEventListener("click", function(event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    sidebar.classList.toggle("active");
-                    sidebarOverlay.classList.toggle("active");
-                });
-            }
-
-            if (closeSidebar) {
-                closeSidebar.addEventListener("click", function() {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                });
-            }
-
-            // Close sidebar when clicking outside
-            document.addEventListener("click", function(event) {
-                if (
-                    !sidebar.contains(event.target) &&
-                    !profileToggle.contains(event.target)
-                ) {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                }
-            });
-        });
-    </script>
     <script>
         window.perfilTipoUsuario = '<?php echo $tipo_utilizador; ?>';
+
+        // Pré-visualização da foto de perfil
+        function previewPhoto(input) {
+            const previewContainer = document.getElementById('photo-preview-container');
+            const previewImg = document.getElementById('photo-preview-img');
+
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    const imageUrl = e.target.result;
+
+                    // Atualizar pré-visualização principal
+                    previewImg.src = imageUrl;
+                    previewContainer.style.display = 'block';
+
+                    // Atualizar avatar circle no sidebar
+                    const avatarCircle = document.getElementById('sidebar-avatar');
+                    if (avatarCircle) {
+                        avatarCircle.innerHTML = '<img src="' + imageUrl + '" alt="Foto de perfil" class="avatar-image">';
+                    }
+
+
+                    // Atualizar current-photo area
+                    const currentPhoto = document.querySelector('.current-photo');
+                    if (currentPhoto) {
+                        currentPhoto.innerHTML = '<img src="' + imageUrl + '" alt="Foto atual" class="photo-preview">';
+                    }
+                }
+
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                previewContainer.style.display = 'none';
+            }
+        }
     </script>
+
+
 </body>
+
 
 </html>

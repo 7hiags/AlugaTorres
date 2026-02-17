@@ -2,14 +2,17 @@
 session_start();
 require_once 'backend/db.php';
 
+// Definir tipo de utilizador
+$tipo_utilizador = $_SESSION['tipo_utilizador'] ?? 'arrendatario';
+
 // Buscar casas disponíveis
-$query = "SELECT c.*, u.utilizador as proprietario_nome,
-                 (SELECT AVG(classificacao) FROM avaliacoes WHERE casa_id = c.id) as avaliacao_media,
-                 (SELECT COUNT(*) FROM avaliacoes WHERE casa_id = c.id) as num_avaliacoes
+
+$query = "SELECT c.*, u.utilizador as proprietario_nome
           FROM casas c
           JOIN utilizadores u ON c.proprietario_id = u.id
           WHERE c.disponivel = 1
           ORDER BY c.id DESC";
+
 
 $result = $conn->query($query);
 $casas = [];
@@ -30,14 +33,14 @@ while ($casa = $result->fetch_assoc()) {
     'cidade' => $casa['cidade'],
     'tipo_propriedade' => $casa['tipo_propriedade'],
     'quartos' => $casa['quartos'],
+    'banheiros' => $casa['banheiros'],
+    'freguesia' => $casa['freguesia'],
     'capacidade' => $casa['capacidade'],
     'preco_noite' => $casa['preco_noite'],
     'preco_limpeza' => $casa['preco_limpeza'],
     'taxa_seguranca' => $casa['taxa_seguranca'],
     'comodidades' => $comodidades,
-    'proprietario_nome' => $casa['proprietario_nome'],
-    'avaliacao_media' => round($casa['avaliacao_media'] ?? 0, 1),
-    'num_avaliacoes' => $casa['num_avaliacoes'] ?? 0
+    'proprietario_nome' => $casa['proprietario_nome']
   ];
 }
 ?>
@@ -83,13 +86,14 @@ while ($casa = $result->fetch_assoc()) {
       </div>
       <div class="filter-group">
         <h4>Preço</h4>
-        <input type="range" min="0" max="100" value="50" class="price-range" id="priceRange">
+        <input type="range" min="0" max="500" value="250" class="price-range" id="priceRange">
         <div class="price-labels">
           <span>0€</span>
-          <span id="priceValue">50€</span>
-          <span>100€</span>
+          <span class="price-value">250€</span>
+          <span>500€+</span>
         </div>
       </div>
+
     </div>
 
     <div class="destinations-grid">
@@ -101,7 +105,8 @@ while ($casa = $result->fetch_assoc()) {
         </div>
       <?php else: ?>
         <?php foreach ($casas as $casa): ?>
-          <div class="destination-card card-visible" data-preco="<?php echo $casa['preco_noite']; ?>" data-tipo="<?php echo strtolower($casa['tipo_propriedade']); ?>" data-freguesia="<?php echo strtolower($casa['freguesia'] ?? 'assentiz'); ?>">
+          <div class="destination-card card-visible" data-preco="<?php echo $casa['preco_noite']; ?>" data-tipo="<?php echo strtolower($casa['tipo_propriedade']); ?>" data-freguesia="<?php echo strtolower($casa['freguesia'] ?? ''); ?>" data-cidade="<?php echo strtolower($casa['cidade'] ?? ''); ?>">
+
             <div class="card-image">
               <img src="style/img/TorresNovas1.jpg" alt="<?php echo htmlspecialchars($casa['titulo']); ?>">
               <div class="card-badge"><?php echo ucfirst($casa['tipo_propriedade']); ?></div>
@@ -111,12 +116,18 @@ while ($casa = $result->fetch_assoc()) {
               <p class="card-description"><?php echo htmlspecialchars(substr($casa['descricao'], 0, 100)) . (strlen($casa['descricao']) > 100 ? '...' : ''); ?></p>
               <div class="card-features">
                 <span><i class="fas fa-bed"></i> <?php echo $casa['quartos']; ?> quartos</span>
+                <span><i class="fas fa-bath"></i> <?php echo $casa['banheiros']; ?> casas de banho</span>
                 <span><i class="fas fa-users"></i> Até <?php echo $casa['capacidade']; ?> pessoas</span>
                 <span><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($casa['cidade']); ?></span>
+                <span><i class="fas fa-home"></i> <?php echo htmlspecialchars($casa['freguesia']); ?></span>
               </div>
               <div class="card-price">
                 <span class="price">€<?php echo number_format($casa['preco_noite'], 2, ',', '.'); ?>/noite</span>
-                <a href="calendario.php?casa_id=<?php echo $casa['id']; ?>" class="book-button">Reservar Agora</a>
+                <?php if ($tipo_utilizador === 'arrendatario'): ?>
+                  <a href="calendario.php?casa_id=<?php echo $casa['id']; ?>" class="book-button">Reservar Agora</a>
+                <?php elseif ($tipo_utilizador === 'proprietario'): ?>
+                  <a href="calendario.php?casa_id=<?php echo $casa['id']; ?>" class="book-button">Ver Detalhes</a>
+                <?php endif; ?>
               </div>
             </div>
           </div>
@@ -138,42 +149,8 @@ while ($casa = $result->fetch_assoc()) {
 
   <?php include 'footer.php'; ?>
 
-  <script src="backend/script.js"></script>
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      const profileToggle = document.getElementById("profile-toggle");
-      const sidebar = document.getElementById("sidebar");
-      const sidebarOverlay = document.getElementById("sidebar-overlay");
-      const closeSidebar = document.getElementById("close-sidebar");
+  <script src="js/script.js"></script>
 
-      if (profileToggle) {
-        profileToggle.addEventListener("click", function(event) {
-          event.preventDefault();
-          event.stopPropagation();
-          sidebar.classList.toggle("active");
-          sidebarOverlay.classList.toggle("active");
-        });
-      }
-
-      if (closeSidebar) {
-        closeSidebar.addEventListener("click", function() {
-          sidebar.classList.remove("active");
-          sidebarOverlay.classList.remove("active");
-        });
-      }
-
-      // Close sidebar when clicking outside
-      document.addEventListener("click", function(event) {
-        if (
-          !sidebar.contains(event.target) &&
-          !profileToggle.contains(event.target)
-        ) {
-          sidebar.classList.remove("active");
-          sidebarOverlay.classList.remove("active");
-        }
-      });
-    });
-  </script>
 </body>
 
 </html>

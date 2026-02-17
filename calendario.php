@@ -22,19 +22,39 @@ $user_id = $_SESSION['user_id'];
 $tipo_utilizador = $_SESSION['tipo_utilizador'] ?? 'arrendatario';
 $casa_id = isset($_GET['casa_id']) ? (int)$_GET['casa_id'] : null;
 $casa = null;
+$is_propria_casa = false;
 
-if ($tipo_utilizador === 'proprietario' && $casa_id) {
+// Se for arrendatário e tiver casa_id, buscar a casa
+if ($tipo_utilizador === 'arrendatario' && $casa_id) {
+    $query = $conn->prepare("SELECT id, titulo FROM casas WHERE id = ?");
+    $query->bind_param("i", $casa_id);
+    $query->execute();
+    $result = $query->get_result();
+    $casa = $result->fetch_assoc();
+} elseif ($tipo_utilizador === 'proprietario' && $casa_id) {
+
+    // Verificar se é a própria casa do proprietário
     $query = $conn->prepare("SELECT id, titulo FROM casas WHERE id = ? AND proprietario_id = ?");
     $query->bind_param("ii", $casa_id, $user_id);
     $query->execute();
     $result = $query->get_result();
-    $casa = $result->fetch_assoc();
+    $casa_propria = $result->fetch_assoc();
 
-    if (!$casa) {
-        header("Location: dashboard.php");
-        exit;
+    if ($casa_propria) {
+        // É a própria casa
+        $casa = $casa_propria;
+        $is_propria_casa = true;
+    } else {
+        // É casa de outro proprietário - permitir visualização apenas
+        $query = $conn->prepare("SELECT id, titulo FROM casas WHERE id = ?");
+        $query->bind_param("i", $casa_id);
+        $query->execute();
+        $result = $query->get_result();
+        $casa = $result->fetch_assoc();
+        $is_propria_casa = false;
     }
 }
+
 
 $ano = isset($_GET['ano']) ? (int)$_GET['ano'] : (int)date('Y');
 $mes = isset($_GET['mes']) ? (int)$_GET['mes'] : (int)date('m');
@@ -53,10 +73,10 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
     <link rel="website icon" type="png" href="style/img/Logo_AlugaTorres_branco.png">
 </head>
 
-
 <body>
     <?php include 'header.php'; ?>
     <?php include 'sidebar.php'; ?>
+
 
     <div class="calendar-container">
         <div class="calendar-header">
@@ -147,8 +167,16 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                         <i class="fas fa-cloud-sun"></i> Meteorologia - Torres Novas
                     </h3>
 
+                    <!-- Data atual -->
+                    <div id="weatherDate" class="weather-date" style="text-align: left; font-size: 0.95em; color: #666; margin-bottom: 10px; font-weight: 500; padding-left: 10px;">
+                        <i class="fas fa-calendar-day" style="margin-right: 8px; color: #038e01;"></i><?php echo date('l, d \d\e F \d\e Y'); ?>
+                    </div>
+
+
+
                     <!-- Indicador de fonte / estado da API -->
                     <div id="weatherSourceStatus" class="weather-source weather-source-loading">Carregando meteorologia...</div>
+
 
                     <div id="weatherCurrent" class="weather-current">
                         <div class="loading">
@@ -193,11 +221,19 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
 
                     </div>
                 <?php elseif ($tipo_utilizador === 'proprietario' && $casa_id): ?>
-                    <div class="reservation-form">
-                        <h3><i class="fas fa-calendar-alt"></i> Gerir Disponibilidade</h3>
-                        <p>Clique em um dia do calendário para bloquear ou desbloquear datas.</p>
-                    </div>
+                    <?php if ($is_propria_casa): ?>
+                        <div class="reservation-form">
+                            <h3><i class="fas fa-calendar-alt"></i> Gerir Disponibilidade</h3>
+                            <p>Clique em um dia do calendário para bloquear ou desbloquear datas.</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="reservation-form">
+                            <h3><i class="fas fa-eye"></i> Modo Visualização</h3>
+                            <p>Está a visualizar uma casa de outro proprietário. Pode consultar o calendário e disponibilidade, mas não pode fazer alterações.</p>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
+
             </div>
         </div>
     </div>
@@ -208,15 +244,20 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
-    <script src="backend/script.js"></script>
+    <script src="js/script.js"></script>
+
 
     <script>
         // Configurações globais
         const currentDate = new Date();
+
         const currentMonth = <?php echo $mes; ?>;
         const currentYear = <?php echo $ano; ?>;
         const casaId = <?php echo $casa_id ?: 'null'; ?>;
         const tipoUtilizador = '<?php echo $tipo_utilizador; ?>';
+        const isPropriaCasa = <?php echo isset($is_propria_casa) && $is_propria_casa ? 'true' : 'false'; ?>;
+
+
 
         // Elementos DOM
         const calendarGrid = document.getElementById('calendarGrid');
@@ -237,24 +278,68 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
         let selectedDate = null; // Data selecionada
         let clickTimeout = null; // Timeout para diferenciar single e double click
 
-        // Função auxiliar para normalizar datas para YYYY-MM-DD
+        // Função auxiliar para normalizar datas para YYYY-MM-DD (versão corrigida)
         function toISO(dateStr) {
-            if (!dateStr) return null;
+            if (!dateStr || dateStr.trim() === '') return null;
+
+            // Limpar a string
+            dateStr = dateStr.trim();
+
             // Já está no formato ISO (YYYY-MM-DD)
             if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
 
             // Formatos comuns: DD/MM/YYYY ou DD-MM-YYYY
-            const m = dateStr.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+            const m = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
             if (m) {
-                return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+                // Garantir que dia e mês tenham 2 dígitos
+                const day = m[1].padStart(2, '0');
+                const month = m[2].padStart(2, '0');
+                const year = m[3];
+
+                // Validar se é uma data válida
+                const testDate = new Date(`${year}-${month}-${day}`);
+
+                if (!isNaN(testDate.getTime())) {
+                    return `${year}-${month}-${day}`;
+                }
             }
 
-            // Tentar parse com Date e formatar
-            const d = new Date(dateStr);
-            if (!isNaN(d)) return d.toISOString().split('T')[0];
+            // Tentar parse com Date (cuidado com timezone)
+            const timestamp = Date.parse(dateStr);
 
-            // Não foi possível normalizar
+            if (!isNaN(timestamp)) {
+                const d = new Date(dateStr);
+
+                // Corrigir problema de timezone
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+
+            console.warn('Não foi possível normalizar a data:', dateStr);
             return null;
+        }
+
+        // Função segura para criar objetos Date
+        function createSafeDate(dateStr) {
+            if (!dateStr) return null;
+
+            const isoDate = toISO(dateStr);
+            if (!isoDate) return null;
+
+            const [year, month, day] = isoDate.split('-').map(Number);
+            // Mês no JavaScript é 0-based, por isso subtraímos 1
+            const date = new Date(year, month - 1, day);
+
+
+            // Verificar se a data é válida
+            if (isNaN(date.getTime())) {
+                console.warn('Data inválida:', dateStr);
+                return null;
+            }
+
+            return date;
         }
 
         // Inicializar calendário
@@ -336,43 +421,59 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
         });
 
         function generateCalendar(month, year) {
+            if (!calendarGrid) {
+                console.error('Elemento calendarGrid não encontrado');
+                return;
+            }
+
             // Limpar calendário (mantendo cabeçalhos)
             while (calendarGrid.children.length > 7) {
                 calendarGrid.removeChild(calendarGrid.lastChild);
             }
 
-            // Primeiro dia do mês
-            const firstDay = new Date(year, month - 1, 1);
-            const lastDay = new Date(year, month, 0);
+            // Validar mês e ano
+            month = parseInt(month) || 1;
+            year = parseInt(year) || new Date().getFullYear();
 
-            // Dia da semana do primeiro dia (0 = Domingo, 1 = Segunda, etc.)
-            const firstDayIndex = firstDay.getDay();
+
+            // Ajustar mês para 1-12
+            month = Math.max(1, Math.min(12, month));
+
+            // Criar datas usando UTC para evitar problemas de timezone
+            const firstDay = new Date(Date.UTC(year, month - 1, 1));
+            const lastDay = new Date(Date.UTC(year, month, 0));
+
+            // Dia da semana do primeiro dia (0 = Domingo)
+            const firstDayIndex = firstDay.getUTCDay();
 
             // Último dia do mês anterior
-            const prevLastDay = new Date(year, month - 1, 0).getDate();
+            const prevLastDay = new Date(Date.UTC(year, month - 1, 0)).getUTCDate();
 
             // Adicionar dias do mês anterior
             for (let i = firstDayIndex; i > 0; i--) {
                 const day = prevLastDay - i + 1;
-                const date = new Date(year, month - 2, day);
+                const date = new Date(Date.UTC(year, month - 2, day));
+
                 addCalendarDay(date, true);
             }
 
             // Adicionar dias do mês atual
-            for (let i = 1; i <= lastDay.getDate(); i++) {
-                const date = new Date(year, month - 1, i);
+            for (let i = 1; i <= lastDay.getUTCDate(); i++) {
+                const date = new Date(Date.UTC(year, month - 1, i));
                 addCalendarDay(date, false);
             }
 
             // Adicionar dias do próximo mês
-            const totalCells = 42; // 6 semanas * 7 dias
-            const nextDays = totalCells - (firstDayIndex + lastDay.getDate());
+            const totalCells = 42;
+            const nextDays = totalCells - (firstDayIndex + lastDay.getUTCDate());
 
             for (let i = 1; i <= nextDays; i++) {
-                const date = new Date(year, month, i);
+                const date = new Date(Date.UTC(year, month, i));
+
                 addCalendarDay(date, true);
             }
         }
+
 
         function addCalendarDay(date, isOtherMonth) {
             const day = document.createElement('div');
@@ -382,14 +483,29 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 day.classList.add('other-month');
             }
 
-            // Verificar se é hoje (comparar como strings YYYY-MM-DD para evitar problemas de timezone)
+            // Verificar se a data é válida
+            if (!date || isNaN(date.getTime())) {
+                console.warn('Data inválida ignorada');
+                return;
+            }
+
+            // Criar data UTC para evitar problemas de timezone
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const dayOfMonth = String(date.getDate()).padStart(2, '0');
+            const dateStrLocal = `${year}-${month}-${dayOfMonth}`;
+
+            // Verificar se é hoje (comparação segura)
             const today = new Date();
-            const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-            const dateStrLocal = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
             if (todayStr === dateStrLocal) {
                 day.classList.add('today');
             }
 
+            // Armazenar a data
+            day.setAttribute('data-date', dateStrLocal);
 
 
             // Número do dia
@@ -398,40 +514,40 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             dayNumber.textContent = date.getDate();
             day.appendChild(dayNumber);
 
-            // Formatar data para YYYY-MM-DD
-            const dateStr = date.toISOString().split('T')[0];
-
             // Adicionar informação de disponibilidade
-            if (availabilityData[dateStr]) {
-                const status = availabilityData[dateStr].status;
+            if (availabilityData && availabilityData[dateStrLocal]) {
+                const status = availabilityData[dateStrLocal].status;
 
-                // Adicionar indicador visual (quadradinho colorido)
+                // Adicionar indicador visual
                 const indicator = document.createElement('div');
                 indicator.className = `day-status-indicator ${status}`;
                 day.appendChild(indicator);
-
 
                 if (status === 'reserved') {
                     day.classList.add('reserved');
                     const event = document.createElement('div');
                     event.className = 'day-events';
-                    event.innerHTML = '<span class="event-indicator event-reservation"></span> Reservado';
+                    event.innerHTML = 'Reservado';
                     day.appendChild(event);
                 } else if (status === 'blocked') {
-                    day.classList.add('disabled');
+                    day.classList.add('blocked');
                     const event = document.createElement('div');
                     event.className = 'day-events';
-                    event.innerHTML = '<span class="event-indicator event-blocked"></span> Bloqueado';
+                    event.innerHTML = 'Bloqueado';
                     day.appendChild(event);
                 } else if (status === 'available') {
                     day.classList.add('available');
+                    const event = document.createElement('div');
+                    event.className = 'day-events';
+                    event.innerHTML = 'Disponível';
+                    day.appendChild(event);
                 }
 
                 // Adicionar preço especial
-                if (availabilityData[dateStr].special_price) {
+                if (availabilityData[dateStrLocal].special_price) {
                     const price = document.createElement('div');
                     price.className = 'day-events';
-                    price.innerHTML = `<i class="fas fa-euro-sign"></i> ${availabilityData[dateStr].special_price}€`;
+                    price.innerHTML = `<i class="fas fa-euro-sign"></i> ${availabilityData[dateStrLocal].special_price}€`;
                     price.style.color = '#28a745';
                     price.style.fontWeight = 'bold';
                     day.appendChild(price);
@@ -439,43 +555,36 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             } else {
                 // Data não está no array, então está disponível
                 day.classList.add('available');
-                // Adicionar indicador verde para disponível
                 const indicator = document.createElement('div');
                 indicator.className = 'day-status-indicator available';
                 day.appendChild(indicator);
             }
 
-
-
-
             // Adicionar meteorologia se disponível
-            if (weatherData[dateStr]) {
+            if (weatherData && weatherData[dateStrLocal]) {
                 const weather = document.createElement('div');
                 weather.className = 'day-weather';
-                weather.innerHTML = `<span style="font-size: 1.2em; font-weight: bold;">${Math.round(weatherData[dateStr].temp)}°</span>`;
+                weather.innerHTML = `<span style="font-size: 1.2em; font-weight: bold;">${Math.round(weatherData[dateStrLocal].temp)}°</span>`;
                 day.appendChild(weather);
             }
 
-            // Adicionar eventos de clique (single e double)
+            // Adicionar eventos de clique
             day.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
 
-                // Limpar timeout anterior
                 if (clickTimeout) {
                     clearTimeout(clickTimeout);
                 }
 
-                // Definir novo timeout para single click
                 clickTimeout = setTimeout(() => {
-                    selectDay(date, dateStr);
-                }, 250); // 250ms para diferenciar single de double click
+                    selectDay(date, dateStrLocal);
+                }, 250);
             });
-
-
 
             calendarGrid.appendChild(day);
         }
+
 
 
 
@@ -489,12 +598,22 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             return statusMap[status] || status;
         }
 
+        // Função para mostrar/ocultar o formulário de reserva
+        function toggleReservationForm(show) {
+            const reservationForm = document.querySelector('.reservation-form');
+            if (reservationForm) {
+                reservationForm.style.display = show ? 'block' : 'none';
+            }
+        }
+
+
         async function loadWeatherData() {
             // Tenta a API local primeiro (quando o Flask estiver em execução)
             async function tryLocal() {
                 try {
                     const res = await fetch('http://localhost:5000/api/meteorologia/previsao');
                     if (!res.ok) throw new Error('Local weather API returned ' + res.status);
+
                     const json = await res.json();
                     if (json && Array.isArray(json.previsao) && json.previsao.length > 0) {
                         return json.previsao;
@@ -510,6 +629,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 if (!previsao || previsao.length === 0) {
                     throw new Error('Previsão vazia');
                 }
+
 
                 const hoje = previsao.find(d => d.hoje) || previsao[0];
 
@@ -533,9 +653,6 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                         <div><i class="fas fa-tint"></i> Humidade: ${Math.round(hoje.humidade_media || 0)}%</div>
                     </div>
                 `;
-
-                // A lista de 5 dias foi removida — o widget mostra apenas a previsão do dia selecionado.
-                // (Anteriormente aqui eram criados os elementos para a lista de 5 dias.)
 
                 // Armazenar dados para o calendário (usar chaves ISO YYYY-MM-DD)
                 previsao.forEach(day => {
@@ -591,6 +708,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=39.4811&longitude=-8.5394&daily=temperature_2m_max,temperature_2m_min,weathercode,windspeed_10m_max&hourly=relative_humidity_2m&forecast_days=16&timezone=Europe/Lisbon');
                 if (!response.ok) throw new Error('Erro ao carregar meteorologia');
 
+
                 const apiData = await response.json();
                 const previsao = processWeatherData(apiData); // já converte para o formato utilizado
 
@@ -620,11 +738,22 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
 
         async function loadAvailability() {
             try {
-                const response = await fetch(`backend/api_availability.php?casa_id=${casaId}&mes=${currentMonth}&ano=${currentYear}`);
+                // Adicionar timestamp para evitar cache
+                const timestamp = new Date().getTime();
+
+                const response = await fetch(`backend_api/api_availability.php?casa_id=${casaId}&mes=${currentMonth}&ano=${currentYear}&_=${timestamp}`);
+
+
                 if (!response.ok) throw new Error('Erro ao carregar disponibilidade');
+
 
                 const data = await response.json();
                 availabilityData = data;
+
+                // Limpar calendário completamente antes de regenerar
+                while (calendarGrid.children.length > 7) {
+                    calendarGrid.removeChild(calendarGrid.lastChild);
+                }
 
                 // Gerar calendário novamente para incluir disponibilidade
                 generateCalendar(currentMonth, currentYear);
@@ -634,10 +763,12 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     const selectedDateObj = new Date(selectedDate);
                     updateSidebarForSelectedDay(selectedDateObj, selectedDate);
                 }
+
             } catch (error) {
                 console.error('Erro ao carregar disponibilidade:', error);
             }
         }
+
 
 
         // Funções para proprietário
@@ -657,7 +788,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             const dates = datesInput.value.split(',');
 
             try {
-                const response = await fetch('backend/calendario_api.php', {
+                const response = await fetch('backend_api/api_availability.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -665,10 +796,13 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     body: JSON.stringify({
                         action: 'block',
                         casa_id: casaId,
-                        dates: dates,
-                        tipo_utiliador: tipoUtilizador
+                        dates: dates
                     })
                 });
+
+
+
+
 
                 const data = await response.json();
                 if (data.success) {
@@ -682,6 +816,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 } else {
                     throw new Error(data.error || 'Erro ao bloquear datas');
                 }
+
             } catch (error) {
                 if (typeof AlugaTorresNotifications !== 'undefined') {
                     AlugaTorresNotifications.error('Erro ao bloquear datas: ' + error.message);
@@ -703,11 +838,10 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 return;
             }
 
-
             const dates = datesInput.value.split(',');
 
             try {
-                const response = await fetch('backend/calendario_api.php', {
+                const response = await fetch('backend_api/api_availability.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -715,10 +849,11 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     body: JSON.stringify({
                         action: 'unblock',
                         casa_id: casaId,
-                        dates: dates,
-                        tipo_utiliador: tipoUtilizador
+                        dates: dates
                     })
                 });
+
+
 
                 const data = await response.json();
                 if (data.success) {
@@ -732,6 +867,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 } else {
                     throw new Error(data.error || 'Erro ao desbloquear datas');
                 }
+
             } catch (error) {
                 if (typeof AlugaTorresNotifications !== 'undefined') {
                     AlugaTorresNotifications.error('Erro ao desbloquear datas: ' + error.message);
@@ -739,10 +875,10 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     alert('Erro ao desbloquear datas: ' + error.message);
                 }
             }
-
         }
 
         async function applySpecialPrice() {
+
             const priceInput = document.getElementById('specialPrice');
             const datesInput = document.getElementById('specialPriceDates');
 
@@ -760,7 +896,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             const price = priceInput.value || null;
 
             try {
-                const response = await fetch('backend/calendario_api.php', {
+                const response = await fetch('backend_api/api_availability.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -769,10 +905,13 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                         action: 'special_price',
                         casa_id: casaId,
                         dates: dates,
-                        price: price,
-                        tipo_utiliador: tipoUtilizador
+                        price: price
                     })
                 });
+
+
+
+
 
                 const data = await response.json();
                 if (data.success) {
@@ -787,6 +926,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 } else {
                     throw new Error(data.error || 'Erro ao aplicar preço especial');
                 }
+
             } catch (error) {
                 if (typeof AlugaTorresNotifications !== 'undefined') {
                     AlugaTorresNotifications.error('Erro ao aplicar preço especial: ' + error.message);
@@ -804,17 +944,14 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             const selectedDays = document.querySelectorAll('.calendar-day.selected');
             selectedDays.forEach(day => day.classList.remove('selected'));
 
-            // Adicionar seleção ao dia clicado
-            const clickedDay = Array.from(calendarGrid.children).find(day => {
-                const dayNumber = day.querySelector('.day-number');
-                return dayNumber && parseInt(dayNumber.textContent) === date.getDate() &&
-                    !day.classList.contains('other-month');
-            });
+            // Adicionar seleção ao dia clicado usando o atributo data-date
+            const clickedDay = calendarGrid.querySelector(`.calendar-day[data-date="${dateStr}"]`);
 
             if (clickedDay) {
                 clickedDay.classList.add('selected');
                 selectedDate = dateStr;
             }
+
 
             // Atualizar sidebar com informações do dia selecionado
             updateSidebarForSelectedDay(date, dateStr);
@@ -827,27 +964,31 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             const dayName = daysOfWeek[date.getDay()];
             const monthName = months[date.getMonth()];
 
-            // Atualizar título do sidebar
-            const sidebarTitle = document.querySelector('.calendar-sidebar h3');
-            if (sidebarTitle) {
-                sidebarTitle.innerHTML = `<i class="fas fa-calendar-day"></i> ${dayName}, ${date.getDate()} de ${monthName}`;
+            // Atualizar título do formulário de reserva (não o título do widget de meteorologia)
+            const reservationFormTitle = document.querySelector('.reservation-form h3');
+            if (reservationFormTitle) {
+                reservationFormTitle.innerHTML = `<i class="fas fa-calendar-day"></i> ${dayName}, ${date.getDate()} de ${monthName}`;
             }
+
 
             // Atualizar informações no sidebar
             let sidebarContent = '';
 
-            // Informações de disponibilidade
-            if (availabilityData[dateStr]) {
-                const avail = availabilityData[dateStr];
-                sidebarContent += `
-                    <div class="sidebar-section">
-                        <h4><i class="fas fa-info-circle"></i> Disponibilidade</h4>
-                        <p><strong>Status:</strong> ${getStatusText(avail.status)}</p>
-                        ${avail.special_price ? `<p><strong>Preço especial:</strong> ${avail.special_price}€</p>` : ''}
-                        ${avail.notes ? `<p><strong>Notas:</strong> ${avail.notes}</p>` : ''}
-                    </div>
-                `;
-            }
+            // Informações de disponibilidade (sempre mostrar, mesmo sem dados explícitos)
+            const avail = availabilityData[dateStr] || {
+                status: 'available',
+                special_price: null,
+                notes: null
+            };
+            sidebarContent += `
+                <div class="sidebar-section">
+                    <h4><i class="fas fa-info-circle"></i> Disponibilidade</h4>
+                    <p><strong>Status:</strong> ${getStatusText(avail.status)}</p>
+                    ${avail.special_price ? `<p><strong>Preço especial:</strong> ${avail.special_price}€</p>` : ''}
+                    ${avail.notes ? `<p><strong>Notas:</strong> ${avail.notes}</p>` : ''}
+                </div>
+            `;
+
 
             // Informações meteorológicas
             if (weatherData[dateStr]) {
@@ -864,7 +1005,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             }
 
             // Ações conforme tipo de usuário
-            if (tipoUtilizador === 'proprietario' && casaId) {
+            if (tipoUtilizador === 'proprietario' && casaId && isPropriaCasa) {
                 const isBlocked = availabilityData[dateStr] && availabilityData[dateStr].status === 'blocked';
                 const buttonText = isBlocked ? 'Desbloquear Data' : 'Bloquear Data';
                 const buttonIcon = isBlocked ? 'fa-unlock' : 'fa-lock';
@@ -878,12 +1019,14 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     </div>
                 `;
             } else if (tipoUtilizador === 'arrendatario' && casaId) {
+
                 const isAvailable = !availabilityData[dateStr] || availabilityData[dateStr].status === 'available';
                 const isBlocked = availabilityData[dateStr] && availabilityData[dateStr].status === 'blocked';
                 const isReserved = availabilityData[dateStr] && availabilityData[dateStr].status === 'reserved';
 
                 if (isBlocked || isReserved) {
-                    // Data bloqueada ou reservada - mostrar apenas mensagem de indisponível
+                    // Data bloqueada ou reservada - ocultar formulário de reserva
+                    toggleReservationForm(false);
                     sidebarContent += `
                         <div class="sidebar-section">
                             <h4><i class="fas fa-calendar-plus"></i> Reserva</h4>
@@ -896,7 +1039,8 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                         </div>
                     `;
                 } else {
-                    // Data disponível - mostrar mensagem
+                    // Data disponível - mostrar formulário de reserva
+                    toggleReservationForm(true);
                     sidebarContent += `
                         <div class="sidebar-section">
                             <h4><i class="fas fa-calendar-plus"></i> Reserva</h4>
@@ -908,6 +1052,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     `;
                 }
             }
+
 
 
             // Atualizar conteúdo do sidebar (depois do widget de meteorologia)
@@ -959,18 +1104,21 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             const isBlocked = availabilityData[dateStr] && availabilityData[dateStr].status === 'blocked';
 
             try {
-                const response = await fetch('backend/calendario_api.php', {
+                const response = await fetch('backend_api/api_availability.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        action: isBlocked ? 'unblock' : 'block',
+                        action: isBlocked ? 'unblock_single' : 'block_single',
                         casa_id: casaId,
-                        dates: [dateStr],
-                        tipo_utiliador: tipoUtilizador
+                        date: dateStr
                     })
                 });
+
+
+
+
 
                 const data = await response.json();
                 if (data.success) {
@@ -984,6 +1132,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 } else {
                     throw new Error(data.error || `Erro ao ${isBlocked ? 'desbloquear' : 'bloquear'} data`);
                 }
+
             } catch (error) {
                 const msg = `Erro ao ${isBlocked ? 'desbloquear' : 'bloquear'} data: ` + error.message;
                 if (typeof AlugaTorresNotifications !== 'undefined') {
@@ -1000,7 +1149,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             const price = priceInput.value || null;
 
             try {
-                const response = await fetch('backend/calendario_api.php', {
+                const response = await fetch('backend_api/api_availability.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1009,10 +1158,13 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                         action: 'special_price',
                         casa_id: casaId,
                         dates: [dateStr],
-                        price: price,
-                        tipo_utiliador: tipoUtilizador
+                        price: price
                     })
                 });
+
+
+
+
 
                 const data = await response.json();
                 if (data.success) {
@@ -1025,6 +1177,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 } else {
                     throw new Error(data.error || 'Erro ao salvar preço especial');
                 }
+
             } catch (error) {
                 if (typeof AlugaTorresNotifications !== 'undefined') {
                     AlugaTorresNotifications.error('Erro ao salvar preço especial: ' + error.message);
@@ -1039,10 +1192,11 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             const resultado = [];
             const hoje = new Date().toISOString().split('T')[0];
 
+
             // Mapeamento dos códigos WMO para descrições
             const weatherCodesMap = {
                 0: "céu limpo",
-                1: "principalmente limpo",
+                1: "parcialmente limpo",
                 2: "parcialmente nublado",
                 3: "nublado",
                 45: "nevoeiro",
@@ -1138,6 +1292,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 const dataStr = datas[i];
                 const dataObj = new Date(dataStr + 'T00:00:00');
 
+
                 // Mapeia weather code para descrição
                 const weatherDesc = weatherCodesMap[weatherCodes[i]] || "condições desconhecidas";
                 const iconCode = iconMapping[weatherCodes[i]] || "01d";
@@ -1177,12 +1332,26 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             const key = (dateStr || '').split('T')[0];
             const day = weatherData[key];
 
+            // Atualizar a data no topo do widget
+            const weatherDateEl = document.getElementById('weatherDate');
+            if (weatherDateEl) {
+                const dataObj = new Date(dateStr);
+                const dataFormatada = dataObj.toLocaleDateString('pt-PT', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                weatherDateEl.innerHTML = `<i class="fas fa-calendar-day" style="margin-right: 8px; color: #038e01;"></i>${dataFormatada}`;
+            }
 
 
             if (!day) {
+
                 weatherCurrent.innerHTML = `
                     <div style="text-align:center; padding: 10px;">
                         <p>Sem previsão para ${new Date(dateStr).toLocaleDateString('pt-PT')}</p>
+
                     </div>
                 `;
                 return;
@@ -1197,6 +1366,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                             ${day.desc || ''}
                         </div>
                         <div>${new Date(dateStr).toLocaleDateString('pt-PT', { weekday: 'long' })} • Torres Novas</div>
+
                     </div>
                     <div style="text-align: right;">
                         <div>Max: ${Math.round(day.temp_max || 0)}°C</div>
@@ -1213,6 +1383,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             if (selectedDate === key) {
                 updateSidebarForSelectedDay(new Date(dateStr), key);
             }
+
         }
 
         async function updateReservationSummary() {
@@ -1236,6 +1407,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             // Calcular noites (usar datas ISO)
             const checkinDate = new Date(checkin);
             const checkoutDate = new Date(checkout);
+
             const nights = Math.ceil((checkoutDate - checkinDate) / (1000 * 60 * 60 * 24));
 
             if (nights <= 0) {
@@ -1250,7 +1422,9 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
 
             try {
                 // Obter preços e disponibilidade (usar formato YYYY-MM-DD)
-                const response = await fetch(`backend/api_reservas.php?action=calculate&casa_id=${casaId}&checkin=${encodeURIComponent(checkin)}&checkout=${encodeURIComponent(checkout)}&hospedes=${guests}`);
+                const response = await fetch(`backend_api/api_reservas.php?action=calculate&casa_id=${casaId}&checkin=${encodeURIComponent(checkin)}&checkout=${encodeURIComponent(checkout)}&hospedes=${guests}`);
+
+
                 const data = await response.json();
 
                 if (data.error) {
@@ -1275,12 +1449,14 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                             ${checkinWeather ? `
                                 <div class="weather-day-summary">
                                     <strong>Check-in (${new Date(checkin).toLocaleDateString('pt-PT')}):</strong>
+
                                     ${Math.round(checkinWeather.temp)}°C - ${checkinWeather.desc}
                                 </div>
                             ` : ''}
                             ${checkoutWeather && checkin !== checkout ? `
                                 <div class="weather-day-summary">
                                     <strong>Check-out (${new Date(checkout).toLocaleDateString('pt-PT')}):</strong>
+
                                     ${Math.round(checkoutWeather.temp)}°C - ${checkoutWeather.desc}
                                 </div>
                             ` : ''}
@@ -1327,155 +1503,99 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
         async function makeReservation() {
             console.log('=== INICIANDO RESERVA ===');
 
-            const checkinRaw = document.getElementById('checkinDate').value;
-            const checkoutRaw = document.getElementById('checkoutDate').value;
-            const guests = document.getElementById('numGuests').value;
-
-            console.log('Valores dos inputs:');
-            console.log('- checkinRaw:', checkinRaw);
-            console.log('- checkoutRaw:', checkoutRaw);
-            console.log('- guests:', guests);
-            console.log('- casaId:', casaId);
+            const checkinRaw = document.getElementById('checkinDate')?.value;
+            const checkoutRaw = document.getElementById('checkoutDate')?.value;
+            const guests = document.getElementById('numGuests')?.value;
 
             if (!checkinRaw || !checkoutRaw) {
-                if (typeof AlugaTorresNotifications !== 'undefined') {
-                    AlugaTorresNotifications.warning('Selecione as datas de checkin e checkout');
-                } else {
-                    alert('Selecione as datas de checkin e checkout');
-                }
-                console.log('ERRO: Datas não preenchidas');
+                showNotification('warning', 'Selecione as datas de checkin e checkout');
                 return;
             }
-
 
             const checkin = toISO(checkinRaw);
             const checkout = toISO(checkoutRaw);
 
-            console.log('Após conversão toISO:');
-            console.log('- checkin (ISO):', checkin);
-            console.log('- checkout (ISO):', checkout);
-
             if (!checkin || !checkout) {
-                if (typeof AlugaTorresNotifications !== 'undefined') {
-                    AlugaTorresNotifications.error('Formato de data inválido');
-                } else {
-                    alert('Formato de data inválido');
-                }
-                console.log('ERRO: Formato de data inválido após conversão');
+                showNotification('error', 'Formato de data inválido');
                 return;
             }
 
+            // Validar se checkout é depois de checkin
+            const checkinDate = new Date(checkin + 'T12:00:00'); // Adicionar hora para evitar timezone
+            const checkoutDate = new Date(checkout + 'T12:00:00');
+
+
+            if (checkoutDate <= checkinDate) {
+                showNotification('error', 'A data de checkout deve ser posterior à data de checkin');
+                return;
+            }
 
             const requestBody = {
-
                 action: 'create',
                 casa_id: casaId,
                 checkin: checkin,
                 checkout: checkout,
-                hospedes: parseInt(guests),
-                tipo_utiliador: tipoUtilizador
+                hospedes: parseInt(guests) || 1,
+                tipo_utilizador: tipoUtilizador
             };
 
-            console.log('Enviando requisição:', requestBody);
-
             try {
-                const response = await fetch('backend/api_reservas.php', {
+                const response = await fetch('backend_api/api_reservas.php', {
                     method: 'POST',
+
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify(requestBody)
                 });
 
-                console.log('Status da resposta:', response.status);
-
-                const responseText = await response.text();
-                console.log('Resposta bruta:', responseText);
-
                 let data;
+                const responseText = await response.text();
+
                 try {
                     data = JSON.parse(responseText);
                 } catch (e) {
-                    console.error('Erro ao parsear JSON:', e);
-                    if (typeof AlugaTorresNotifications !== 'undefined') {
-                        AlugaTorresNotifications.error('Erro: Resposta inválida do servidor');
-                    } else {
-                        alert('Erro: Resposta inválida do servidor');
-                    }
+                    console.error('Erro ao parsear JSON:', e, 'Resposta:', responseText);
+                    showNotification('error', 'Resposta inválida do servidor');
                     return;
                 }
 
+                if (data && data.success) {
+                    showNotification('success', 'Reserva criada com sucesso!');
 
-                console.log('Dados parseados:', data);
-
-                if (data.success) {
-                    if (typeof AlugaTorresNotifications !== 'undefined') {
-                        AlugaTorresNotifications.success('Reserva criada com sucesso! ID: ' + data.reserva_id);
-                    } else {
-                        alert('Reserva criada com sucesso! ID: ' + data.reserva_id);
-                    }
                     // Limpar formulário
                     document.getElementById('checkinDate').value = '';
                     document.getElementById('checkoutDate').value = '';
                     document.getElementById('reservationSummary').style.display = 'none';
+
+                    // Limpar seleção
+                    selectedDate = null;
+                    document.querySelectorAll('.calendar-day.selected').forEach(day => {
+                        day.classList.remove('selected');
+                    });
+
                     // Recarregar disponibilidade
-                    loadAvailability();
+                    await loadAvailability();
                 } else {
-                    if (typeof AlugaTorresNotifications !== 'undefined') {
-                        AlugaTorresNotifications.error('Erro: ' + (data.error || 'Erro desconhecido'));
-                    } else {
-                        alert('Erro: ' + (data.error || 'Erro desconhecido'));
-                    }
-                    console.error('Erro retornado pela API:', data.error);
+                    showNotification('error', data?.error || 'Erro ao criar reserva');
                 }
             } catch (error) {
                 console.error('Erro na requisição:', error);
-                if (typeof AlugaTorresNotifications !== 'undefined') {
-                    AlugaTorresNotifications.error('Erro ao criar reserva: ' + error.message);
-                } else {
-                    alert('Erro ao criar reserva: ' + error.message);
-                }
+                showNotification('error', 'Erro ao criar reserva: ' + error.message);
             }
+        }
 
+        // Função auxiliar para mostrar notificações
+        function showNotification(type, message) {
+            if (typeof AlugaTorresNotifications !== 'undefined') {
+                if (type === 'success') AlugaTorresNotifications.success(message);
+                else if (type === 'warning') AlugaTorresNotifications.warning(message);
+                else AlugaTorresNotifications.error(message);
+            } else {
+                alert(message);
+            }
         }
     </script>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const profileToggle = document.getElementById("profile-toggle");
-            const sidebar = document.getElementById("sidebar");
-            const sidebarOverlay = document.getElementById("sidebar-overlay");
-            const closeSidebar = document.getElementById("close-sidebar");
-
-            if (profileToggle) {
-                profileToggle.addEventListener("click", function(event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    sidebar.classList.toggle("active");
-                    sidebarOverlay.classList.toggle("active");
-                });
-            }
-
-            if (closeSidebar) {
-                closeSidebar.addEventListener("click", function() {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                });
-            }
-
-            // Close sidebar when clicking outside
-            document.addEventListener("click", function(event) {
-                if (
-                    !sidebar.contains(event.target) &&
-                    !profileToggle.contains(event.target)
-                ) {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                }
-            });
-        });
-    </script>
 </body>
-
 
 </html>

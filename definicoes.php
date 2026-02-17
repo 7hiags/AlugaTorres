@@ -19,41 +19,34 @@ if ($result->num_rows === 0) {
 }
 
 $user_id = $_SESSION['user_id'];
-$user_name = $_SESSION['user'];
 $tipo_utilizador = $_SESSION['tipo_utilizador'] ?? 'arrendatario';
 
 $error = '';
 $success = '';
 
+// Processar formulário
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    if ($action === 'update_settings') {
-        $notificacoes_email = isset($_POST['notificacoes_email']) ? 1 : 0;
-        $notificacoes_sms = isset($_POST['notificacoes_sms']) ? 1 : 0;
-        $idioma = $_POST['idioma'] ?? 'pt';
-        $moeda = $_POST['moeda'] ?? 'EUR';
+    if ($action === 'update_notifications') {
+        $email_notif = isset($_POST['email_notif']) ? 1 : 0;
+        $sms_notif = isset($_POST['sms_notif']) ? 1 : 0;
+        $promo_notif = isset($_POST['promo_notif']) ? 1 : 0;
 
-        // Verificar se já existem configurações
-        $stmt = $conn->prepare("SELECT id FROM configuracoes_usuario WHERE utilizador_id = ?");
-        $stmt->bind_param("i", $user_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-
-        if ($result->num_rows > 0) {
-            // Atualizar
-            $stmt = $conn->prepare("UPDATE configuracoes_usuario SET notificacoes_email = ?, notificacoes_sms = ?, idioma = ?, moeda = ? WHERE utilizador_id = ?");
-            $stmt->bind_param("iissi", $notificacoes_email, $notificacoes_sms, $idioma, $moeda, $user_id);
-        } else {
-            // Inserir
-            $stmt = $conn->prepare("INSERT INTO configuracoes_usuario (utilizador_id, notificacoes_email, notificacoes_sms, idioma, moeda) VALUES (?, ?, ?, ?, ?)");
-            $stmt->bind_param("iissi", $user_id, $notificacoes_email, $notificacoes_sms, $idioma, $moeda);
-        }
+        $stmt = $conn->prepare("
+            INSERT INTO configuracoes_usuario (utilizador_id, email_notificacoes, sms_notificacoes, promocoes) 
+            VALUES (?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+            email_notificacoes = VALUES(email_notificacoes),
+            sms_notificacoes = VALUES(sms_notificacoes),
+            promocoes = VALUES(promocoes)
+        ");
+        $stmt->bind_param("iiii", $user_id, $email_notif, $sms_notif, $promo_notif);
 
         if ($stmt->execute()) {
-            $success = 'Configurações atualizadas com sucesso!';
+            $success = 'Configurações de notificações atualizadas com sucesso!';
         } else {
-            $error = 'Erro ao atualizar configurações.';
+            $error = 'Erro ao atualizar configurações: ' . $conn->error;
         }
     }
 }
@@ -62,15 +55,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $stmt = $conn->prepare("SELECT * FROM configuracoes_usuario WHERE utilizador_id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
-$result = $stmt->get_result();
-$config = $result->fetch_assoc();
+$config = $stmt->get_result()->fetch_assoc();
 
+// Valores padrão se não existir configuração
 if (!$config) {
     $config = [
-        'notificacoes_email' => 1,
-        'notificacoes_sms' => 0,
-        'idioma' => 'pt',
-        'moeda' => 'EUR'
+        'email_notificacoes' => 1,
+        'sms_notificacoes' => 0,
+        'promocoes' => 1
     ];
 }
 ?>
@@ -80,7 +72,7 @@ if (!$config) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AlugaTorres | Configurações</title>
+    <title>AlugaTorres | Definições</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="style/style.css">
     <link rel="website icon" type="png" href="style/img/Logo_AlugaTorres_branco.png">
@@ -90,122 +82,88 @@ if (!$config) {
     <?php include 'header.php'; ?>
     <?php include 'sidebar.php'; ?>
 
-    <div class="form-container">
-        <div class="form-header">
-            <h1 class="form-title">Configurações</h1>
-            <p class="form-subtitle">Personalize suas preferências e configurações da conta</p>
+    <div class="settings-container">
+        <div class="settings-header">
+            <h1 class="settings-title"><i class="fas fa-cog"></i> Definições</h1>
+            <p class="settings-subtitle">Personalize as suas preferências e configurações da conta</p>
         </div>
 
         <?php if ($error): ?>
-            <div class="message error">
-                <?php echo htmlspecialchars($error); ?>
-            </div>
+            <div class="message error"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
 
         <?php if ($success): ?>
-            <div class="message success">
-                <?php echo htmlspecialchars($success); ?>
-            </div>
+            <div class="message success"><?php echo htmlspecialchars($success); ?></div>
         <?php endif; ?>
 
-        <form method="POST" class="casa-form">
-            <input type="hidden" name="action" value="update_settings">
+        <div class="settings-grid">
+            <!-- Notificações -->
+            <div class="settings-card">
+                <h3><i class="fas fa-bell"></i> Notificações</h3>
+                <form id="notifications-form" method="POST" action="definicoes.php">
+                    <input type="hidden" name="action" value="update_notifications">
 
-            <!-- Seção: Notificações -->
-            <div class="form-section">
-                <h2 class="section-title"><i class="fas fa-bell"></i> Notificações</h2>
-
-                <div class="form-group">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="notificacoes_email" name="notificacoes_email"
-                            <?php echo $config['notificacoes_email'] ? 'checked' : ''; ?>>
-                        <label for="notificacoes_email">Receber notificações por e-mail</label>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="email_notif" <?php echo $config['email_notificacoes'] ? 'checked' : ''; ?>>
+                            <span>Receber notificações por email</span>
+                        </label>
                     </div>
-                    <small class="form-help">Receba atualizações sobre reservas, mensagens e promoções</small>
-                </div>
 
-                <div class="form-group">
-                    <div class="checkbox-group">
-                        <input type="checkbox" id="notificacoes_sms" name="notificacoes_sms"
-                            <?php echo $config['notificacoes_sms'] ? 'checked' : ''; ?>>
-                        <label for="notificacoes_sms">Receber notificações por SMS</label>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="sms_notif" <?php echo $config['sms_notificacoes'] ? 'checked' : ''; ?>>
+                            <span>Receber notificações por SMS</span>
+                        </label>
                     </div>
-                    <small class="form-help">Receba lembretes importantes por mensagem de texto</small>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="promo_notif" <?php echo $config['promocoes'] ? 'checked' : ''; ?>>
+                            <span>Receber promoções e ofertas especiais</span>
+                        </label>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Segurança -->
+            <div class="settings-card">
+                <h3><i class="fas fa-shield-alt"></i> Segurança</h3>
+                <div class="settings-links">
+                    <a href="perfil.php#alterar-senha" class="settings-link">
+                        <i class="fas fa-key"></i> Alterar Palavra-passe
+                    </a>
+                    <a href="perfil.php" class="settings-link">
+                        <i class="fas fa-user-edit"></i> Editar Perfil
+                    </a>
+                    <a href="eliminar_conta.php" class="settings-link danger">
+                        <i class="fas fa-trash-alt"></i> Eliminar Conta
+                    </a>
                 </div>
             </div>
 
-            <!-- Seção: Preferências -->
-            <div class="form-section">
-                <h2 class="section-title"><i class="fas fa-globe"></i> Preferências</h2>
-
-                <div class="form-group">
-                    <label>Idioma</label>
-                    <select name="idioma" class="form-control">
-                        <option value="pt" <?php echo $config['idioma'] === 'pt' ? 'selected' : ''; ?>>Português</option>
-                        <option value="en" <?php echo $config['idioma'] === 'en' ? 'selected' : ''; ?>>English</option>
-                        <option value="es" <?php echo $config['idioma'] === 'es' ? 'selected' : ''; ?>>Español</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Moeda</label>
-                    <select name="moeda" class="form-control">
-                        <option value="EUR" <?php echo $config['moeda'] === 'EUR' ? 'selected' : ''; ?>>Euro (€)</option>
-                        <option value="USD" <?php echo $config['moeda'] === 'USD' ? 'selected' : ''; ?>>Dólar ($)</option>
-                        <option value="GBP" <?php echo $config['moeda'] === 'GBP' ? 'selected' : ''; ?>>Libra (£)</option>
-                    </select>
+            <!-- Informações da Conta -->
+            <div class="settings-card">
+                <h3><i class="fas fa-info-circle"></i> Informações da Conta</h3>
+                <div class="account-info">
+                    <p><strong>Tipo de Utilizador:</strong> <?php echo ucfirst($tipo_utilizador); ?></p>
+                    <p><strong>Email:</strong> <?php echo htmlspecialchars($_SESSION['email'] ?? 'N/A'); ?></p>
+                    <p><strong>Utilizador:</strong> <?php echo htmlspecialchars($_SESSION['user'] ?? 'N/A'); ?></p>
                 </div>
             </div>
+        </div>
 
-            <!-- Botões -->
-            <div class="form-actions">
-                <button type="submit" class="btn-save">
-                    <i class="fas fa-save"></i> Salvar Configurações
-                </button>
-                <a href="dashboard.php" class="btn-cancel">
-                    <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
-                </a>
-            </div>
-        </form>
+        <div class="settings-actions">
+            <button type="submit" form="notifications-form" class="btn-save">
+                <i class="fas fa-save"></i> Guardar Alterações
+            </button>
+        </div>
     </div>
 
-    <script src="backend/script.js"></script>
+    <?php include 'footer.php'; ?>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const profileToggle = document.getElementById("profile-toggle");
-            const sidebar = document.getElementById("sidebar");
-            const sidebarOverlay = document.getElementById("sidebar-overlay");
-            const closeSidebar = document.getElementById("close-sidebar");
+    <script src="js/script.js"></script>
 
-            if (profileToggle) {
-                profileToggle.addEventListener("click", function(event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    sidebar.classList.toggle("active");
-                    sidebarOverlay.classList.toggle("active");
-                });
-            }
-
-            if (closeSidebar) {
-                closeSidebar.addEventListener("click", function() {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                });
-            }
-
-            // Close sidebar when clicking outside
-            document.addEventListener("click", function(event) {
-                if (
-                    !sidebar.contains(event.target) &&
-                    !profileToggle.contains(event.target)
-                ) {
-                    sidebar.classList.remove("active");
-                    sidebarOverlay.classList.remove("active");
-                }
-            });
-        });
-    </script>
 </body>
 
 </html>
