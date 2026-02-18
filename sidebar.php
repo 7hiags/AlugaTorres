@@ -44,7 +44,6 @@ if (session_status() === PHP_SESSION_NONE) {
         }
     </style>
     <div class="sidebar" id="sidebar">
-
         <div class="sidebar-header">
             <h3>Menu do Utilizador</h3>
             <button class="close-sidebar" id="close-sidebar">&times;</button>
@@ -53,7 +52,7 @@ if (session_status() === PHP_SESSION_NONE) {
 
         <div class="sidebar-content">
 
-            <?php if (isset($_SESSION['tipo_utilizador']) && $_SESSION['tipo_utilizador'] === 'proprietario' || $_SESSION['tipo_utilizador'] === 'arrendatario'): ?>
+            <?php if (isset($_SESSION['tipo_utilizador']) && $_SESSION['tipo_utilizador'] !== 'admin'): ?>
                 <a href="<?= $BASE_URL ?>perfil.php" class="sidebar-item">
                     <i class="fas fa-user-edit"></i> Meu Perfil
                 </a>
@@ -85,15 +84,6 @@ if (session_status() === PHP_SESSION_NONE) {
                 </a>
                 <a href="<?= $BASE_URL ?>admin/casas.php" class="sidebar-item admin-item">
                     <i class="fas fa-home"></i> Gerir Casas
-                </a>
-                <a href="<?= $BASE_URL ?>admin/reservas.php" class="sidebar-item admin-item">
-                    <i class="fas fa-calendar-check"></i> Gerir Reservas
-                </a>
-                <a href="<?= $BASE_URL ?>admin/verificacoes.php" class="sidebar-item admin-item">
-                    <i class="fas fa-clipboard-check"></i> Verificações Pendentes
-                </a>
-                <a href="<?= $BASE_URL ?>admin/estatisticas.php" class="sidebar-item admin-item">
-                    <i class="fas fa-chart-line"></i> Estatísticas
                 </a>
                 <a href="<?= $BASE_URL ?>admin/configuracoes.php" class="sidebar-item admin-item">
                     <i class="fas fa-cogs"></i> Configurações
