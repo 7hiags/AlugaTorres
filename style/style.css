@@ -741,9 +741,9 @@ section.about-us .about-cta a,
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     height: fit-content;
-    position: sticky;
-    top: 100px;
+    position: static;
 }
+
 
 .filter-section h3 {
     color: #038e01;
@@ -795,7 +795,8 @@ section.about-us .about-cta a,
 
 /* Seção: Card de Destino - Estilos para os cards individuais de destinos com animações */
 .destination-card {
-    height: 80%;
+    height: auto;
+    min-height: 400px;
     background: white;
     border-radius: 10px;
     overflow: hidden;
@@ -803,7 +804,10 @@ section.about-us .about-cta a,
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     opacity: 0;
     transform: translateY(20px);
+    display: flex;
+    flex-direction: column;
 }
+
 
 .destination-card.card-visible {
     opacity: 1;
@@ -842,6 +846,9 @@ section.about-us .about-cta a,
 /* Seção: Conteúdo do Card - Área de texto e informações do card de destino */
 .card-content {
     padding: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .card-content h3 {
@@ -849,6 +856,7 @@ section.about-us .about-cta a,
     margin-bottom: 10px;
     font-size: 1.3em;
 }
+
 
 /* Seção: Descrição do Card - Texto descritivo do destino no card */
 .card-description {

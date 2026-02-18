@@ -21,7 +21,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       throw new \Exception("Erro na conexão com o banco de dados");
     }
 
-    $stmt = $conn->prepare("SELECT id, utilizador, palavrapasse_hash, tipo_utilizador FROM utilizadores WHERE email = ?");
+    $stmt = $conn->prepare("SELECT id, utilizador, palavrapasse_hash, tipo_utilizador, ativo FROM utilizadores WHERE email = ?");
+
     if (!$stmt) {
       throw new \Exception("Erro na preparação da consulta: " . $conn->error);
     }
@@ -34,10 +35,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->store_result();
 
     if ($stmt->num_rows === 1) {
-      $stmt->bind_result($id, $user, $hash, $tipo_utilizador);
+      $stmt->bind_result($id, $user, $hash, $tipo_utilizador, $ativo);
       $stmt->fetch();
 
       if (password_verify($pass, $hash)) {
+        // Verificar se o utilizador está banido
+        if (isset($ativo) && $ativo == 0) {
+          throw new \Exception("Conta suspensa. Contacte o administrador.");
+        }
+
         $_SESSION['user'] = $user;
         $_SESSION['email'] = $email;
         $_SESSION['user_id'] = $id;
@@ -49,7 +55,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Notificação de sucesso no login
         notifySuccess('Bem-vindo de volta, ' . htmlspecialchars($user) . '! Login realizado com sucesso.');
 
-        header("Location: ../index.php");
+        // Redirecionar admin para admin/index.php, outros para index.php
+        if ($tipo_utilizador === 'admin') {
+          header("Location: ../admin/index.php");
+        } else {
+          header("Location: ../index.php");
+        }
         exit;
       } else {
 

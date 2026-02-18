@@ -52,3 +52,9 @@
 [2026-02-16 15:27:25] STATUS=failed-mail TO=thiagosilvauha@gmail.com SUBJECT=Nova reserva para sua propriedade: Alecrim
 <p>Olá Thiago da Silva,</p><p>Foi criada uma nova reserva para a sua propriedade <strong>Alecrim</strong>.</p><p><strong>Detalhes:</strong><br>Arrendatário: Thiago da Silva (thiagosilvauh@gmail.com)<br>Check-in: 2026-02-28<br>Check-out: 2026-03-03<br>Hóspedes: 5<br>Total: 75,00€</p><p>ID da reserva: 13</p>
 
+[2026-02-18 19:20:05] STATUS=failed-mail TO=thiagosilvauh@gmail.com SUBJECT=Reserva confirmada: Casona
+<p>Olá Thiago da Silva,</p><p>Sua reserva na propriedade <strong>Casona</strong> foi confirmada.</p><p><strong>Detalhes:</strong><br>Check-in: 2026-02-18<br>Check-out: 2026-02-20<br>Hóspedes: 2<br>Total: 80,00€</p><p>ID da reserva: 14</p><p>Obrigado por usar o AlugaTorres.</p>
+
+[2026-02-18 19:20:07] STATUS=failed-mail TO=thiagosilvauha@gmail.com SUBJECT=Nova reserva para sua propriedade: Casona
+<p>Olá Thiago da Silva,</p><p>Foi criada uma nova reserva para a sua propriedade <strong>Casona</strong>.</p><p><strong>Detalhes:</strong><br>Arrendatário: Thiago da Silva (thiagosilvauh@gmail.com)<br>Check-in: 2026-02-18<br>Check-out: 2026-02-20<br>Hóspedes: 2<br>Total: 80,00€</p><p>ID da reserva: 14</p>
+

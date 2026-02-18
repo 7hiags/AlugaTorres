@@ -92,7 +92,6 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AlugaTorres | Admin Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="../style/style.css">
     <link rel="stylesheet" href="admin_style.css">
     <link rel="website icon" type="png" href="../style/img/Logo_AlugaTorres_branco.png">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -109,6 +108,8 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
         </div>
 
         <!-- Cards de Estatísticas -->
+
+
         <div class="stats-grid">
             <div class="stat-card primary">
                 <div class="stat-icon"><i class="fas fa-users"></i></div>
@@ -172,8 +173,11 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
             <!-- Gráfico de Reservas -->
             <div class="admin-card">
                 <h3><i class="fas fa-chart-bar"></i> Reservas por Estado</h3>
-                <canvas id="reservasChart"></canvas>
+                <div class="chart-container">
+                    <canvas id="reservasChart"></canvas>
+                </div>
             </div>
+
 
             <!-- Últimos Utilizadores -->
             <div class="admin-card">
@@ -265,7 +269,10 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
                 </a>
             </div>
         </div>
+
     </main>
+
+
 
     <?php include '../footer.php'; ?>
 
@@ -293,8 +300,9 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false
+                maintainAspectRatio: true
             }
+
         });
     </script>
 </body>

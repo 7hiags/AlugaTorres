@@ -296,20 +296,34 @@
     padding: 25px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
     margin-bottom: 30px;
+    display: block !important;
+    width: 100% !important;
+    grid-column: 1 / -1 !important;
 }
 
 .quick-actions h3 {
     margin: 0 0 20px 0;
     color: #333;
+    display: block;
+    width: 100%;
+    text-align: left;
 }
 
 .actions-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 15px;
+    width: 100%;
 }
 
+
+
+
+
 .action-card {
+    flex: 1;
+    min-width: 150px;
+    max-width: none;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -323,6 +337,23 @@
     transition: all 0.3s ease;
     position: relative;
 }
+
+@media (max-width: 768px) {
+    .actions-grid {
+        flex-direction: column;
+        flex-wrap: wrap;
+        width: 100%;
+    }
+
+    .action-card {
+        width: 100%;
+        max-width: none;
+    }
+}
+
+
+
+
 
 .action-card:hover {
     background: #667eea;
@@ -480,17 +511,19 @@
 }
 
 .filters-form {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 15px;
-    align-items: end;
+    align-items: center;
 }
 
-.form-group {
+.filters-form .form-group {
     margin-bottom: 0;
+    flex: 1;
+    min-width: 200px;
 }
 
-.form-group label {
+.filters-form .form-group label {
     display: block;
     margin-bottom: 5px;
     color: #555;
@@ -498,36 +531,56 @@
     font-weight: 500;
 }
 
-.form-control {
+.filters-form .form-control {
     width: 100%;
     padding: 10px 15px;
     border: 2px solid #e0e0e0;
     border-radius: 8px;
     font-size: 0.95rem;
     transition: border-color 0.3s ease;
+    height: 42px;
+    box-sizing: border-box;
 }
 
-.form-control:focus {
+.filters-form .form-control:focus {
     outline: none;
     border-color: #667eea;
 }
 
 /* Search Box */
-.search-box {
+.filters-form .search-box {
     position: relative;
+    flex: 2;
+    min-width: 250px;
 }
 
-.search-box i {
+.filters-form .search-box i {
     position: absolute;
     left: 15px;
     top: 50%;
     transform: translateY(-50%);
     color: #999;
+    pointer-events: none;
 }
 
-.search-box input {
+.filters-form .search-box input {
     padding-left: 40px;
+    height: 42px;
+    width: 100%;
+    box-sizing: border-box;
 }
+
+/* Filter buttons alignment */
+.filters-form .btn {
+    height: 42px;
+    padding: 10px 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    margin-top: 0;
+}
+
 
 /* Pagination */
 .pagination {
@@ -766,8 +819,15 @@
 .chart-container {
     position: relative;
     height: 300px;
+    max-height: 300px;
     margin-top: 20px;
+    overflow: hidden;
 }
+
+.chart-container canvas {
+    max-height: 100% !important;
+}
+
 
 /* Data Export Buttons */
 .export-buttons {
