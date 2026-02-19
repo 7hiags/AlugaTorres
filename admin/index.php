@@ -263,10 +263,6 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
                         <span class="notification-badge"><?php echo $stats['casas_pendentes']; ?></span>
                     <?php endif; ?>
                 </a>
-                <a href="estatisticas.php" class="action-card">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Ver Estatísticas</span>
-                </a>
             </div>
         </div>
 
