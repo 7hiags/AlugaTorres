@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once '../backend/db.php';
-require_once '../backend/upload_handler.php';
+
 
 if (!isset($_SESSION['user_id']) || $_SESSION['tipo_utilizador'] !== 'proprietario') {
     header("Location: ../backend/login.php");
@@ -32,10 +32,8 @@ function old($campo, $casa)
         : htmlspecialchars($casa[$campo] ?? '');
 }
 
-// Obter fotos existentes
-$fotos_existentes = obterFotosCasa($conn, $casa_id);
-
 // Comodidades atuais
+
 $comodidades_atuais = isset($_POST['comodidades'])
     ? $_POST['comodidades']
     : json_decode($casa['comodidades'], true);
@@ -46,17 +44,8 @@ $hora_checkout = isset($_POST['hora_checkout']) ? $_POST['hora_checkout'] : $cas
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        // Remover foto individual
-        if (isset($_POST['remover_foto'])) {
-            $foto = $_POST['remover_foto'];
-            $novas_fotos = array_values(array_filter($fotos_existentes, fn($f) => $f !== $foto));
-            removerFoto($foto);
-            atualizarFotosCasa($conn, $casa_id, $novas_fotos);
-            header("Location: editar_casa.php?id=$casa_id");
-            exit;
-        }
-
         // Campos principais
+
         $titulo = trim($_POST['titulo']);
         $descricao = trim($_POST['descricao']);
         $morada = trim($_POST['morada']);
@@ -124,15 +113,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt->execute();
 
-        // Upload novas fotos
-        if (isset($_FILES['fotos']) && !empty($_FILES['fotos']['name'][0])) {
-            $resultado = uploadFotosCasa($_FILES['fotos'], $casa_id);
-            if ($resultado['sucesso']) {
-                atualizarFotosCasa($conn, $casa_id, array_merge($fotos_existentes, $resultado['fotos']));
-            }
-        }
-
         header("Location: editar_casa.php?id=$casa_id&success=1");
+
         exit;
     } catch (\Exception $e) {
         $error = $e->getMessage();
@@ -152,6 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="website icon" type="png" href="../style/img/Logo_AlugaTorres_branco.png">
 </head>
 
+
 <body>
     <?php include '../header.php'; ?>
     <?php include '../sidebar.php'; ?>
@@ -167,10 +150,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <?php if ($success): ?>
-            <div class="message success">Casa atualizada com sucesso!</div>
+            <div class="message success">
+                Casa atualizada com sucesso!
+                <div style="margin-top: 10px;">
+                    <a href="../perfil.php" class="btn-save" onclick="localStorage.setItem('atualizarStats', 'true');">
+                        <i class="fas fa-chart-line"></i> Ver Estatísticas Atualizadas
+                    </a>
+                </div>
+            </div>
         <?php endif; ?>
 
-        <form method="POST" enctype="multipart/form-data" class="casa-form">
+
+        <form method="POST" class="casa-form">
+
 
             <!-- Seção 1: Informações Básicas -->
             <div class="form-section">
@@ -187,14 +179,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="form-group">
                         <label>Tipo de Propriedade <span class="required">*</span></label>
                         <select name="tipo_propriedade" class="form-control" required>
-                            <?php
-                            $tipos = ['casa' => 'Casa', 'apartamento' => 'Apartamento', 'vivenda' => 'Vivenda', 'quinta' => 'Quinta', 'outro' => 'Outro'];
-                            foreach ($tipos as $valor => $label) {
-                                $sel = $casa['tipo_propriedade'] == $valor ? 'selected' : '';
-                                echo "<option value=\"$valor\" $sel>$label</option>";
-                            }
-                            ?>
+                            <option value="casa" <?php echo $casa['tipo_propriedade'] == 'casa' ? 'selected' : ''; ?>>Casa</option>
+                            <option value="apartamento" <?php echo $casa['tipo_propriedade'] == 'apartamento' ? 'selected' : ''; ?>>Apartamento</option>
+                            <option value="vivenda" <?php echo $casa['tipo_propriedade'] == 'vivenda' ? 'selected' : ''; ?>>Vivenda</option>
+                            <option value="quinta" <?php echo $casa['tipo_propriedade'] == 'quinta' ? 'selected' : ''; ?>>Quinta</option>
+                            <option value="outro" <?php echo $casa['tipo_propriedade'] == 'outro' ? 'selected' : ''; ?>>Outro</option>
                         </select>
+                        <div id="campo-outro" class="hidden-outro" style="margin-top: 10px; <?php echo $casa['tipo_propriedade'] == 'outro' ? 'display: block;' : 'display: none;'; ?>">
+                            <input type="text" name="outro_texto" placeholder="Especifique outro tipo de propriedade" class="form-control"
+                                value="<?php echo old('outro_texto', $casa); ?>">
+                        </div>
                     </div>
                 </div>
 
@@ -204,6 +198,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         placeholder="Descreva a sua propriedade, localização, características únicas..."><?php echo old('descricao', $casa); ?></textarea>
                 </div>
             </div>
+
 
             <!-- Seção 2: Localização -->
             <div class="form-section">
@@ -219,7 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Código Postal <span class="required">*</span></label>
-                        <input type="text" name="codigo_postal" class="form-control" required
+                        <input type="text" name="codigo_postal" class="form-control"
                             placeholder="Ex: 2350-000"
                             value="<?php echo old('codigo_postal', $casa); ?>">
                     </div>
@@ -233,28 +228,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="form-group">
                         <label>Freguesia</label>
                         <select name="freguesia" class="form-control">
-                            <?php
-                            $freguesias = [
-                                'assentiz' => 'Assentiz',
-                                'chancelaria' => 'Chancelaria',
-                                'meia-via' => 'Meia Via',
-                                'pedrogao' => 'Pedrógão',
-                                'riachos' => 'Riachos',
-                                'UF-brogueira-Parceiros-Alcorochel' => 'Brogueira/Parceiros/Alcorochel',
-                                'UF-olaia-paco' => 'Olaia/Paço',
-                                'UFT-santamaria-salvador-santiago' => 'Santa Maria/Salvador/Santiago',
-                                'UFT-saopedro-lapas-ribeirab' => 'São Pedro/Lapas/Ribeira Branca',
-                                'UF-zibreira' => 'Zibreira'
-                            ];
-                            foreach ($freguesias as $valor => $label) {
-                                $sel = $casa['freguesia'] == $valor ? 'selected' : '';
-                                echo "<option value=\"$valor\" $sel>$label</option>";
-                            }
-                            ?>
+                            <option value="assentiz" <?php echo $casa['freguesia'] == 'assentiz' ? 'selected' : ''; ?>>Assentiz</option>
+                            <option value="chancelaria" <?php echo $casa['freguesia'] == 'chancelaria' ? 'selected' : ''; ?>>Chancelaria</option>
+                            <option value="meia-via" <?php echo $casa['freguesia'] == 'meia-via' ? 'selected' : ''; ?>>Meia Via</option>
+                            <option value="pedrogao" <?php echo $casa['freguesia'] == 'pedrogao' ? 'selected' : ''; ?>>Pedrógão</option>
+                            <option value="riachos" <?php echo $casa['freguesia'] == 'riachos' ? 'selected' : ''; ?>>Riachos</option>
+                            <option value="UF-brogueira-Parceiros-Alcorochel" <?php echo $casa['freguesia'] == 'UF-brogueira-Parceiros-Alcorochel' ? 'selected' : ''; ?>>Brogueira/Parceiros/Alcorochel</option>
+                            <option value="UF-olaia-paco" <?php echo $casa['freguesia'] == 'UF-olaia-paco' ? 'selected' : ''; ?>>Olaia/Paço</option>
+                            <option value="UFT-santamaria-salvador-santiago" <?php echo $casa['freguesia'] == 'UFT-santamaria-salvador-santiago' ? 'selected' : ''; ?>>Santa Maria/Salvador/Santiago</option>
+                            <option value="UFT-saopedro-lapas-ribeirab" <?php echo $casa['freguesia'] == 'UFT-saopedro-lapas-ribeirab' ? 'selected' : ''; ?>>São Pedro/Lapas/Ribeira Branca</option>
+                            <option value="UF-zibreira" <?php echo $casa['freguesia'] == 'UF-zibreira' ? 'selected' : ''; ?>>Zibreira</option>
                         </select>
                     </div>
                 </div>
             </div>
+
 
             <!-- Seção 3: Detalhes da Propriedade -->
             <div class="form-section">
@@ -292,6 +280,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
             </div>
+
 
             <!-- Seção 4: Preços e Regras -->
             <div class="form-section">
@@ -361,9 +350,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div style="display: flex; gap: 10px;">
                             <select name="hora_checkout_hora" class="form-control" required style="flex: 1;">
                                 <?php
-                                list($hora_sel, $min_sel) = explode(':', $hora_checkout);
+                                list($hora_sel_out, $min_sel_out) = explode(':', $hora_checkout);
                                 for ($hora = 0; $hora < 24; $hora++) {
-                                    $selected = ($hora == (int)$hora_sel) ? 'selected' : '';
+                                    $selected = ($hora == (int)$hora_sel_out) ? 'selected' : '';
                                     echo "<option value=\"$hora\" $selected>" . sprintf('%02d', $hora) . "</option>";
                                 }
                                 ?>
@@ -373,7 +362,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <?php
                                 for ($min = 0; $min < 60; $min++) {
                                     $min_formatado = sprintf('%02d', $min);
-                                    $selected = ($min_formatado == $min_sel) ? 'selected' : '';
+                                    $selected = ($min_formatado == $min_sel_out) ? 'selected' : '';
                                     echo "<option value=\"$min_formatado\" $selected>$min_formatado</option>";
                                 }
                                 ?>
@@ -390,41 +379,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
-            <!-- Seção 5: Fotos -->
-            <div class="form-section">
-                <h2 class="section-title"><i class="fas fa-images"></i> Fotos da Propriedade</h2>
 
-                <?php if ($fotos_existentes): ?>
-                    <p>Fotos atuais:</p>
-                    <div class="fotos-preview-grid">
-                        <?php foreach ($fotos_existentes as $foto): ?>
-                            <div class="foto-preview-item" style="position: relative;">
-                                <img src="../uploads/<?php echo $foto; ?>">
-                                <form method="POST" style="position: absolute; top: 5px; right: 5px; margin: 0;">
-                                    <input type="hidden" name="remover_foto" value="<?php echo $foto; ?>">
-                                    <button type="submit" class="foto-remove-btn"><i class="fas fa-times"></i></button>
-                                </form>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
+            <!-- Seção 5: Comodidades -->
 
-                <div class="form-group">
-                    <label>Adicionar Novas Fotos (máximo 7)</label>
-                    <div class="fotos-upload-area" id="fotosUploadArea">
-                        <input type="file" name="fotos[]" id="fotosInput" multiple accept="image/jpeg,image/png,image/jpg,image/webp" style="display: none;" onchange="handleFotosSelect(this)">
-                        <div class="fotos-placeholder" onclick="document.getElementById('fotosInput').click()">
-                            <i class="fas fa-cloud-upload-alt fa-3x"></i>
-                            <p>Clique para selecionar fotos</p>
-                            <small>Formatos: JPG, PNG, WebP | Máx: 5MB cada | Máx: 7 fotos</small>
-                        </div>
-                    </div>
-                    <div id="fotosPreview" class="fotos-preview-grid"></div>
-                    <div id="fotosCount" class="fotos-count">0 de 7 fotos selecionadas</div>
-                </div>
-            </div>
-
-            <!-- Seção 6: Comodidades -->
             <div class="form-section">
                 <h2 class="section-title"><i class="fas fa-star"></i> Comodidades</h2>
 
@@ -432,7 +389,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="checkbox-grid">
                     <?php
-                    $lista_comodidades = [
+                    $comodidades = [
                         'wifi' => 'Wi-Fi',
                         'tv' => 'TV',
                         'ar_condicionado' => 'Ar Condicionado',
@@ -454,7 +411,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'ventilador' => 'Ventilador',
                         'cacifos' => 'Cacifos/Bagageira'
                     ];
-                    foreach ($lista_comodidades as $value => $label):
+
+                    foreach ($comodidades as $value => $label):
                         $checked = in_array($value, $comodidades_atuais) ? 'checked' : '';
                     ?>
                         <label class="checkbox-label">
@@ -465,6 +423,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
+
+            <!-- Ações do Formulário -->
             <div class="form-actions">
                 <a href="../dashboard.php" class="btn-cancel">
                     <i class="fas fa-times"></i> Cancelar
@@ -474,6 +434,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </button>
             </div>
 
+
         </form>
     </div>
 
@@ -481,94 +442,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <script src="../js/script.js"></script>
 
-
     <script>
-        // Variáveis para gestão de fotos
-        let fotosSelecionadas = [];
-        const MAX_FOTOS = 7;
-
-        function handleFotosSelect(input) {
-            const files = Array.from(input.files);
-            const previewContainer = document.getElementById('fotosPreview');
-            const countDisplay = document.getElementById('fotosCount');
-
-            // Verificar limite
-            if (fotosSelecionadas.length + files.length > MAX_FOTOS) {
-                alert('Máximo de ' + MAX_FOTOS + ' fotos permitido.');
-                return;
+        // Mostrar/ocultar campo "outro" tipo de propriedade
+        document.querySelector('select[name="tipo_propriedade"]').addEventListener('change', function() {
+            const campoOutro = document.getElementById('campo-outro');
+            if (this.value === 'outro') {
+                campoOutro.style.display = 'block';
+            } else {
+                campoOutro.style.display = 'none';
             }
-
-            // Validar e adicionar fotos
-            files.forEach(file => {
-                // Validar tamanho (5MB)
-                if (file.size > 5 * 1024 * 1024) {
-                    alert('A foto ' + file.name + ' excede 5MB.');
-                    return;
-                }
-
-                // Validar tipo
-                const tiposPermitidos = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
-                if (!tiposPermitidos.includes(file.type)) {
-                    alert('Tipo de arquivo não permitido: ' + file.name);
-                    return;
-                }
-
-                fotosSelecionadas.push(file);
-            });
-
-            atualizarPreview();
-            atualizarInputFiles();
-        }
-
-        function atualizarPreview() {
-            const previewContainer = document.getElementById('fotosPreview');
-            const countDisplay = document.getElementById('fotosCount');
-
-            previewContainer.innerHTML = '';
-
-            fotosSelecionadas.forEach((file, index) => {
-                const reader = new FileReader();
-
-                reader.onload = function(e) {
-                    const div = document.createElement('div');
-                    div.className = 'foto-preview-item';
-                    div.innerHTML = `
-                        <img src="${e.target.result}" alt="Foto ${index + 1}">
-                        <button type="button" class="foto-remove-btn" onclick="removerFoto(${index})" title="Remover foto">
-                            <i class="fas fa-times"></i>
-                        </button>
-                        <span class="foto-numero">${index + 1}</span>
-                    `;
-                    previewContainer.appendChild(div);
-                };
-
-                reader.readAsDataURL(file);
-            });
-
-            countDisplay.textContent = fotosSelecionadas.length + ' de ' + MAX_FOTOS + ' fotos selecionadas';
-        }
-
-        function removerFoto(index) {
-            fotosSelecionadas.splice(index, 1);
-            atualizarPreview();
-            atualizarInputFiles();
-        }
-
-        function atualizarInputFiles() {
-            const input = document.getElementById('fotosInput');
-            const dataTransfer = new DataTransfer();
-
-            fotosSelecionadas.forEach(file => {
-                dataTransfer.items.add(file);
-            });
-
-            input.files = dataTransfer.files;
-        }
+        });
 
         document.addEventListener('DOMContentLoaded', function() {
+
             // Função para combinar hora e minuto nos campos hidden
             function updateTimeFields() {
-
                 // Check-in
                 const checkinHora = document.querySelector('select[name="hora_checkin_hora"]').value;
                 const checkinMinuto = document.querySelector('select[name="hora_checkin_minuto"]').value;
