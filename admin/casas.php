@@ -43,26 +43,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $tipo_mensagem = 'warning';
                 }
                 break;
-
-            case 'destacar':
-                $stmt = $conn->prepare("UPDATE casas SET destaque = NOT destaque WHERE id = ?");
-                $stmt->bind_param("i", $casa_id);
-                if ($stmt->execute()) {
-                    logAdminActivity('Alternar Destaque Casa', 'ID: ' . $casa_id);
-                    $mensagem = 'Estado de destaque alterado!';
-                    $tipo_mensagem = 'success';
-                }
-                break;
-
-            case 'disponibilidade':
-                $stmt = $conn->prepare("UPDATE casas SET disponivel = NOT disponivel WHERE id = ?");
-                $stmt->bind_param("i", $casa_id);
-                if ($stmt->execute()) {
-                    logAdminActivity('Alternar Disponibilidade Casa', 'ID: ' . $casa_id);
-                    $mensagem = 'Disponibilidade alterada!';
-                    $tipo_mensagem = 'success';
-                }
-                break;
         }
     }
 }
@@ -315,49 +295,30 @@ logAdminActivity('Acesso à Gestão de Casas');
                             </td>
                             <td>
                                 <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                                    <a href="../proprietario/editar_casa.php?id=<?php echo $casa['id']; ?>" class="btn btn-sm btn-primary" target="_blank">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-
                                     <?php if (!isset($casa['aprovado']) || $casa['aprovado'] == 0): ?>
                                         <form method="POST" style="display: inline;" onsubmit="return confirm('Aprovar esta casa?');">
                                             <input type="hidden" name="acao" value="aprovar">
                                             <input type="hidden" name="casa_id" value="<?php echo $casa['id']; ?>">
                                             <button type="submit" class="btn btn-sm btn-success">
-                                                <i class="fas fa-check"></i>
+                                                <i class="fas fa-check"></i> Aprovar
                                             </button>
                                         </form>
 
                                         <button class="btn btn-sm btn-danger" onclick="mostrarRejeicao(<?php echo $casa['id']; ?>)">
-                                            <i class="fas fa-times"></i>
+                                            <i class="fas fa-times"></i> Rejeitar
                                         </button>
                                     <?php endif; ?>
-
-                                    <form method="POST" style="display: inline;" onsubmit="return confirm('Alternar destaque?');">
-                                        <input type="hidden" name="acao" value="destacar">
-                                        <input type="hidden" name="casa_id" value="<?php echo $casa['id']; ?>">
-                                        <button type="submit" class="btn btn-sm btn-warning">
-                                            <i class="fas fa-star"></i>
-                                        </button>
-                                    </form>
-
-                                    <form method="POST" style="display: inline;" onsubmit="return confirm('Alternar disponibilidade?');">
-                                        <input type="hidden" name="acao" value="disponibilidade">
-                                        <input type="hidden" name="casa_id" value="<?php echo $casa['id']; ?>">
-                                        <button type="submit" class="btn btn-sm btn-secondary">
-                                            <i class="fas fa-toggle-<?php echo $casa['disponivel'] ? 'on' : 'off'; ?>"></i>
-                                        </button>
-                                    </form>
 
                                     <form method="POST" style="display: inline;" onsubmit="return confirm('ELIMINAR permanentemente?');">
                                         <input type="hidden" name="acao" value="eliminar">
                                         <input type="hidden" name="casa_id" value="<?php echo $casa['id']; ?>">
                                         <button type="submit" class="btn btn-sm btn-danger">
-                                            <i class="fas fa-trash"></i>
+                                            <i class="fas fa-trash"></i> Eliminar
                                         </button>
                                     </form>
                                 </div>
                             </td>
+
                         </tr>
                     <?php endwhile; ?>
                 </tbody>
@@ -423,7 +384,7 @@ logAdminActivity('Acesso à Gestão de Casas');
     </div>
 
     <?php include '../footer.php'; ?>
-    
+
     <script src="../js/script.js"></script>
     <script>
         function mostrarRejeicao(casaId) {
