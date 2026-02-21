@@ -95,13 +95,13 @@ logAdminActivity('Acesso às Estatísticas');
             <div class="admin-card">
                 <h3><i class="fas fa-calendar-alt"></i> Reservas por Mês</h3>
                 <div class="chart-container">
-                    <canvas id="reservasChart"></canvas>
+                    <canvas id="reservasChart" data-reservas='<?php echo json_encode($reservas_por_mes); ?>'></canvas>
                 </div>
             </div>
             <div class="admin-card">
                 <h3><i class="fas fa-euro-sign"></i> Receitas por Mês</h3>
                 <div class="chart-container">
-                    <canvas id="receitasChart"></canvas>
+                    <canvas id="receitasChart" data-receitas='<?php echo json_encode($receitas_por_mes); ?>'></canvas>
                 </div>
             </div>
         </div>
@@ -109,9 +109,10 @@ logAdminActivity('Acesso às Estatísticas');
         <div class="admin-card" style="margin-bottom: 30px;">
             <h3><i class="fas fa-user-plus"></i> Novos Utilizadores por Mês</h3>
             <div class="chart-container">
-                <canvas id="utilizadoresChart"></canvas>
+                <canvas id="utilizadoresChart" data-utilizadores='<?php echo json_encode($utilizadores_por_mes); ?>'></canvas>
             </div>
         </div>
+
 
         <!-- Top Casas -->
         <div class="admin-content-grid">
@@ -164,65 +165,7 @@ logAdminActivity('Acesso às Estatísticas');
     <?php include '../footer.php'; ?>
 
     <script src="../js/script.js"></script>
-    <script>
-        const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-        const reservasData = <?php echo json_encode($reservas_por_mes); ?>;
-        const receitasData = <?php echo json_encode($receitas_por_mes); ?>;
-        const utilizadoresData = <?php echo json_encode($utilizadores_por_mes); ?>;
 
-        // Gráfico de Reservas
-        new Chart(document.getElementById('reservasChart'), {
-            type: 'bar',
-            data: {
-                labels: meses,
-                datasets: [{
-                    label: 'Reservas',
-                    data: reservasData,
-                    backgroundColor: 'rgba(102, 126, 234, 0.8)'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
-        });
-
-        // Gráfico de Receitas
-        new Chart(document.getElementById('receitasChart'), {
-            type: 'line',
-            data: {
-                labels: meses,
-                datasets: [{
-                    label: 'Receitas (€)',
-                    data: receitasData,
-                    borderColor: '#28a745',
-                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
-        });
-
-        // Gráfico de Utilizadores
-        new Chart(document.getElementById('utilizadoresChart'), {
-            type: 'bar',
-            data: {
-                labels: meses,
-                datasets: [{
-                    label: 'Novos Utilizadores',
-                    data: utilizadoresData,
-                    backgroundColor: 'rgba(255, 193, 7, 0.8)'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
-        });
-    </script>
 </body>
 
 </html>

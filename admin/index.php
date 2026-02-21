@@ -174,8 +174,14 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
             <div class="admin-card">
                 <h3><i class="fas fa-chart-bar"></i> Reservas por Estado</h3>
                 <div class="chart-container">
-                    <canvas id="reservasChart"></canvas>
+                    <canvas id="reservasChart"
+                        data-pendentes="<?php echo $stats['reservas_pendentes']; ?>"
+                        data-confirmadas="<?php echo $stats['reservas_confirmadas']; ?>"
+                        data-concluidas="<?php echo $stats['reservas_concluidas']; ?>"
+                        data-canceladas="<?php echo max(0, $stats['total_reservas'] - $stats['reservas_pendentes'] - $stats['reservas_confirmadas'] - $stats['reservas_concluidas']); ?>">
+                    </canvas>
                 </div>
+
             </div>
 
 
@@ -273,34 +279,7 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
     <?php include '../footer.php'; ?>
 
     <script src="../js/script.js"></script>
-    <script>
-        // Gráfico de Reservas
-        const ctx = document.getElementById('reservasChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Pendentes', 'Confirmadas', 'Concluídas', 'Canceladas'],
-                datasets: [{
-                    data: [
-                        <?php echo $stats['reservas_pendentes']; ?>,
-                        <?php echo $stats['reservas_confirmadas']; ?>,
-                        <?php echo $stats['reservas_concluidas']; ?>,
-                        <?php
-                        $canceladas = $stats['total_reservas'] - $stats['reservas_pendentes'] - $stats['reservas_confirmadas'] - $stats['reservas_concluidas'];
-                        echo max(0, $canceladas);
-                        ?>
-                    ],
 
-                    backgroundColor: ['#ffc107', '#28a745', '#17a2b8', '#dc3545']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true
-            }
-
-        });
-    </script>
 </body>
 
 </html>

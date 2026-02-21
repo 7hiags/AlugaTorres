@@ -381,59 +381,7 @@ logAdminActivity('Acesso à Gestão de Utilizadores');
     <?php include '../footer.php'; ?>
 
     <script src="../js/script.js"></script>
-    <script>
-        function verDetalhes(userId) {
-            document.getElementById('modalDetalhes').classList.add('active');
-            // Aqui você pode fazer uma requisição AJAX para buscar mais detalhes
-            document.getElementById('modalContent').innerHTML = `
-                <p><strong>ID:</strong> #${userId}</p>
-                <p>Carregando detalhes...</p>
-            `;
-        }
 
-        function fecharModal() {
-            document.getElementById('modalDetalhes').classList.remove('active');
-        }
-
-        // Fechar modal ao clicar fora
-        document.getElementById('modalDetalhes').addEventListener('click', function(e) {
-            if (e.target === this) {
-                fecharModal();
-            }
-        });
-
-        // Exportar para CSV
-        function exportTableToCSV(filename) {
-            const csv = [];
-            const rows = document.querySelectorAll("#utilizadoresTable tr");
-
-            for (let i = 0; i < rows.length; i++) {
-                const row = [],
-                    cols = rows[i].querySelectorAll("td, th");
-
-                for (let j = 0; j < cols.length - 1; j++) {
-                    row.push(cols[j].innerText);
-                }
-
-                csv.push(row.join(","));
-            }
-
-            downloadCSV(csv.join("\n"), filename);
-        }
-
-        function downloadCSV(csv, filename) {
-            const csvFile = new Blob([csv], {
-                type: "text/csv"
-            });
-            const downloadLink = document.createElement("a");
-            downloadLink.download = filename;
-            downloadLink.href = window.URL.createObjectURL(csvFile);
-            downloadLink.style.display = "none";
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-        }
-    </script>
 </body>
 
 </html>
