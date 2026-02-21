@@ -1,8 +1,33 @@
 <?php
+
+/**
+ * ========================================
+ * Dashboard Admin - Painel de Administração
+ * ========================================
+ * Este arquivo exibe o painel administrativo com estatísticas,
+ * gráficos e informações resumidas sobre o sistema.
+ * Apenas acessível a administradores autenticados.
+ * 
+ * @author AlugaTorres
+ * @version 1.0
+ */
+
+// ============================================
+// Verificação de Permissão Admin
+// ============================================
+
+// Verifica se o utilizador é administrador
 require_once __DIR__ . '/../backend/check_admin.php';
 
-// Buscar estatísticas para o dashboard
+// ============================================
+// Obtenção de Estatísticas do Sistema
+// ============================================
+
 $stats = [];
+
+// ------------------------------------------
+// Estatísticas de Utilizadores
+// ------------------------------------------
 
 // Total de utilizadores
 $result = $conn->query("SELECT COUNT(*) as total FROM utilizadores");
@@ -16,6 +41,14 @@ $stats['total_proprietarios'] = $result->fetch_assoc()['total'];
 $result = $conn->query("SELECT COUNT(*) as total FROM utilizadores WHERE tipo_utilizador = 'arrendatario'");
 $stats['total_arrendatarios'] = $result->fetch_assoc()['total'];
 
+// Novos utilizadores este mês
+$result = $conn->query("SELECT COUNT(*) as total FROM utilizadores WHERE MONTH(data_registro) = MONTH(CURRENT_DATE()) AND YEAR(data_registro) = YEAR(CURRENT_DATE())");
+$stats['novos_utilizadores_mes'] = $result->fetch_assoc()['total'];
+
+// ------------------------------------------
+// Estatísticas de Casas
+// ------------------------------------------
+
 // Total de casas
 $result = $conn->query("SELECT COUNT(*) as total FROM casas");
 $stats['total_casas'] = $result->fetch_assoc()['total'];
@@ -27,6 +60,10 @@ $stats['casas_disponiveis'] = $result->fetch_assoc()['total'];
 // Casas em destaque
 $result = $conn->query("SELECT COUNT(*) as total FROM casas WHERE destaque = 1");
 $stats['casas_destaque'] = $result->fetch_assoc()['total'];
+
+// ------------------------------------------
+// Estatísticas de Reservas
+// ------------------------------------------
 
 // Total de reservas
 $result = $conn->query("SELECT COUNT(*) as total FROM reservas");
@@ -44,17 +81,29 @@ $stats['reservas_confirmadas'] = $result->fetch_assoc()['total'];
 $result = $conn->query("SELECT COUNT(*) as total FROM reservas WHERE status = 'concluida'");
 $stats['reservas_concluidas'] = $result->fetch_assoc()['total'];
 
+// Novas reservas este mês
+$result = $conn->query("SELECT COUNT(*) as total FROM reservas WHERE MONTH(data_reserva) = MONTH(CURRENT_DATE()) AND YEAR(data_reserva) = YEAR(CURRENT_DATE())");
+$stats['novas_reservas_mes'] = $result->fetch_assoc()['total'];
+
 // Receita total estimada
 $result = $conn->query("SELECT SUM(total) as total FROM reservas WHERE status IN ('confirmada', 'concluida')");
 $stats['receita_total'] = $result->fetch_assoc()['total'] ?? 0;
 
-// Novos utilizadores este mês
-$result = $conn->query("SELECT COUNT(*) as total FROM utilizadores WHERE MONTH(data_registro) = MONTH(CURRENT_DATE()) AND YEAR(data_registro) = YEAR(CURRENT_DATE())");
-$stats['novos_utilizadores_mes'] = $result->fetch_assoc()['total'];
+// ------------------------------------------
+// Casas Pendentes de Aprovação
+// ------------------------------------------
 
-// Novas reservas este mês
-$result = $conn->query("SELECT COUNT(*) as total FROM reservas WHERE MONTH(data_reserva) = MONTH(CURRENT_DATE()) AND YEAR(data_reserva) = YEAR(CURRENT_DATE())");
-$stats['novas_reservas_mes'] = $result->fetch_assoc()['total'];
+// Verifica casas pendentes de aprovação (se existir campo aprovado)
+try {
+    $casas_pendentes = $conn->query("SELECT COUNT(*) as total FROM casas WHERE aprovado = 0 OR aprovado IS NULL");
+    $stats['casas_pendentes'] = $casas_pendentes->fetch_assoc()['total'];
+} catch (\Exception $e) {
+    $stats['casas_pendentes'] = 0;
+}
+
+// ============================================
+// Obtenção de Dados Recentes
+// ============================================
 
 // Últimos 5 utilizadores registados
 $ultimos_utilizadores = $conn->query("SELECT id, utilizador, email, tipo_utilizador, data_registro as created_at FROM utilizadores ORDER BY data_registro DESC LIMIT 5");
@@ -71,16 +120,11 @@ $ultimas_reservas = $conn->query("
     LIMIT 5
 ");
 
+// ============================================
+// Log de Atividade Admin
+// ============================================
 
-// Casas pendentes de aprovação (se existir campo aprovado)
-try {
-    $casas_pendentes = $conn->query("SELECT COUNT(*) as total FROM casas WHERE aprovado = 0 OR aprovado IS NULL");
-    $stats['casas_pendentes'] = $casas_pendentes->fetch_assoc()['total'];
-} catch (\Exception $e) {
-    $stats['casas_pendentes'] = 0;
-}
-
-// Log da atividade
+// Regista a atividade no log administrativo
 logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo');
 ?>
 
@@ -88,29 +132,49 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
 <html lang="pt">
 
 <head>
+    <!-- ========================================
+         Meta Tags e Configurações
+         ======================================== -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AlugaTorres | Admin Dashboard</title>
+
+    <!-- ========================================
+         Folhas de Estilo (CSS)
+         ======================================== -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="admin_style.css">
     <link rel="website icon" type="png" href="../style/img/Logo_AlugaTorres_branco.png">
+
+    <!-- Chart.js para gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
+    <!-- ========================================
+         Inclusão de Componentes
+         ======================================== -->
     <?php include '../header.php'; ?>
     <?php include '../sidebar.php'; ?>
 
+    <!-- ========================================
+         Conteúdo Principal Admin
+         ======================================== -->
     <main class="admin-main">
+
+        <!-- ========================================
+             Cabeçalho do Dashboard
+             ======================================== -->
         <div class="admin-header">
             <h1><i class="fas fa-shield-alt"></i> Painel de Administração</h1>
             <p>Bem-vindo, <strong><?php echo htmlspecialchars($admin_nome); ?></strong>!</p>
         </div>
 
-        <!-- Cards de Estatísticas -->
-
-
+        <!-- ========================================
+             Cards de Estatísticas Principais
+             ======================================== -->
         <div class="stats-grid">
+            <!-- Card: Total Utilizadores -->
             <div class="stat-card primary">
                 <div class="stat-icon"><i class="fas fa-users"></i></div>
                 <div class="stat-info">
@@ -120,6 +184,7 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
                 </div>
             </div>
 
+            <!-- Card: Total Casas -->
             <div class="stat-card success">
                 <div class="stat-icon"><i class="fas fa-home"></i></div>
                 <div class="stat-info">
@@ -129,6 +194,7 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
                 </div>
             </div>
 
+            <!-- Card: Total Reservas -->
             <div class="stat-card warning">
                 <div class="stat-icon"><i class="fas fa-calendar-alt"></i></div>
                 <div class="stat-info">
@@ -138,6 +204,7 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
                 </div>
             </div>
 
+            <!-- Card: Receita Total -->
             <div class="stat-card info">
                 <div class="stat-icon"><i class="fas fa-euro-sign"></i></div>
                 <div class="stat-info">
@@ -148,7 +215,9 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
             </div>
         </div>
 
-        <!-- Estatísticas Detalhadas -->
+        <!-- ========================================
+             Estatísticas Detalhadas
+             ======================================== -->
         <div class="stats-row">
             <div class="stat-detail-card">
                 <h4><i class="fas fa-user-tie"></i> Proprietários</h4>
@@ -168,12 +237,18 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
             </div>
         </div>
 
-        <!-- Gráfico e Tabelas -->
+        <!-- ========================================
+             Grid de Conteúdo Admin
+             ======================================== -->
         <div class="admin-content-grid">
-            <!-- Gráfico de Reservas -->
+
+            <!-- ========================================
+                 Gráfico de Reservas por Estado
+                 ======================================== -->
             <div class="admin-card">
                 <h3><i class="fas fa-chart-bar"></i> Reservas por Estado</h3>
                 <div class="chart-container">
+                    <!-- Canvas do gráfico com dados inline -->
                     <canvas id="reservasChart"
                         data-pendentes="<?php echo $stats['reservas_pendentes']; ?>"
                         data-confirmadas="<?php echo $stats['reservas_confirmadas']; ?>"
@@ -181,11 +256,12 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
                         data-canceladas="<?php echo max(0, $stats['total_reservas'] - $stats['reservas_pendentes'] - $stats['reservas_confirmadas'] - $stats['reservas_concluidas']); ?>">
                     </canvas>
                 </div>
-
             </div>
 
 
-            <!-- Últimos Utilizadores -->
+            <!-- ========================================
+                 Tabela: Últimos Utilizadores
+                 ======================================== -->
             <div class="admin-card">
                 <h3><i class="fas fa-user-plus"></i> Últimos Utilizadores</h3>
                 <table class="admin-table">
@@ -207,7 +283,6 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
                                 </td>
                                 <td><?php echo date('d/m/Y', strtotime($user['created_at'])); ?></td>
                             </tr>
-
                         <?php endwhile; ?>
                     </tbody>
                 </table>
@@ -215,7 +290,9 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
             </div>
         </div>
 
-        <!-- Últimas Reservas -->
+        <!-- ========================================
+             Tabela: Últimas Reservas
+             ======================================== -->
         <div class="admin-card full-width">
             <h3><i class="fas fa-calendar-check"></i> Últimas Reservas</h3>
             <table class="admin-table">
@@ -244,13 +321,14 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
                             <td><?php echo date('d/m/Y H:i', strtotime($reserva['created_at'])); ?></td>
                         </tr>
                     <?php endwhile; ?>
-
                 </tbody>
             </table>
             <a href="reservas.php" class="btn-view-all">Ver todas <i class="fas fa-arrow-right"></i></a>
         </div>
 
-        <!-- Ações Rápidas -->
+        <!-- ========================================
+             Ações Rápidas do Admin
+             ======================================== -->
         <div class="quick-actions">
             <h3><i class="fas fa-bolt"></i> Ações Rápidas</h3>
             <div class="actions-grid">
@@ -265,6 +343,7 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
                 <a href="verificacoes.php" class="action-card">
                     <i class="fas fa-clipboard-check"></i>
                     <span>Verificações Pendentes</span>
+                    <!-- Badge de notificação se houver pendientes -->
                     <?php if ($stats['casas_pendentes'] > 0): ?>
                         <span class="notification-badge"><?php echo $stats['casas_pendentes']; ?></span>
                     <?php endif; ?>
@@ -274,10 +353,14 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
 
     </main>
 
-
-
+    <!-- ========================================
+         Rodapé da Página
+         ======================================== -->
     <?php include '../footer.php'; ?>
 
+    <!-- ========================================
+         Scripts JavaScript
+         ======================================== -->
     <script src="../js/script.js"></script>
 
 </body>

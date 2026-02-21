@@ -1,24 +1,51 @@
 <?php
-// Base do projeto (XAMPP)
+
+/**
+ * ========================================
+ * Footer - Rodapé do Site
+ * ========================================
+ * Este arquivo contém o rodapé padrão do site AlugaTorres,
+ * com informações de contato, links rápidos e redes sociais.
+ * 
+ * @author AlugaTorres
+ * @version 1.0
+ */
+
+// ============================================
+// Configurações e Inicialização
+// ============================================
+
+// Base do projeto (XAMPP) - URL base do site
 $BASE_URL = '/alugatorres/';
 
-// inicia sessão se ainda não existir
+// ============================================
+// Gerenciamento de Sessão
+// ============================================
+
+// Inicia sessão se ainda não existir
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 ?>
 
+<!-- ========================================
+     Estrutura HTML do Rodapé
+     ======================================== -->
 <footer>
     <div class="footer-content">
 
-        <!-- Sobre a empresa -->
+        <!-- ========================================
+             Seção: Sobre a Empresa
+             ======================================== -->
         <div class="footer-section">
             <h4>AlugaTorres</h4>
             <p>Sua agência de arrendamentos de confiança desde 2025</p>
             <p>Venha conhecer nossa cidade</p>
         </div>
 
-        <!-- Links rápidos -->
+        <!-- ========================================
+             Seção: Links Rápidos
+             ======================================== -->
         <div class="footer-section">
             <h4>Links Rápidos</h4>
             <ul>
@@ -30,7 +57,9 @@ if (session_status() === PHP_SESSION_NONE) {
             </ul>
         </div>
 
-        <!-- Contactos -->
+        <!-- ========================================
+             Seção: Contactos
+             ======================================== -->
         <div class="footer-section">
             <h4>Contactos</h4>
             <p><i class="fas fa-map-marker-alt"></i> Santarém, Portugal</p>
@@ -38,7 +67,9 @@ if (session_status() === PHP_SESSION_NONE) {
             <p><i class="fas fa-envelope"></i> alugatorrespt@gmail.com</p>
         </div>
 
-        <!-- Redes sociais -->
+        <!-- ========================================
+             Seção: Redes Sociais
+             ======================================== -->
         <div class="footer-section">
             <h4>Redes Sociais</h4>
             <div class="social-links">
@@ -51,6 +82,9 @@ if (session_status() === PHP_SESSION_NONE) {
 
     </div>
 
+    <!-- ========================================
+         Barra Inferior do Rodapé
+         ======================================== -->
     <div class="footer-bottom">
         <p>&copy; <span id="ano"></span> AlugaTorres. Todos os direitos reservados.</p>
     </div>

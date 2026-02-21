@@ -1,4 +1,28 @@
-// Funcionalidade do Slider
+/**
+ * ========================================
+ * AlugaTorres - JavaScript Principal
+ * ========================================
+ * 
+ * Este arquivo contém todas as funcionalidades JavaScript
+ * utilizadas no site AlugaTorres, incluindo:
+ * - Slider de imagens
+ * - Menu mobile (hamburger)
+ * - Filtros de pesquisa
+ * - Validação de formulários
+ * - Sistema de notificações
+ * - Funcionalidades de reservas
+ * - Gráficos e estatísticas (admin)
+ * 
+ * @author AlugaTorres
+ * @version 1.0
+ */
+
+"use strict"; // Modo estrito para melhor qualidade de código
+
+// ========================================
+// 1. Slider de Imagens (Página Inicial)
+// ========================================
+
 document.addEventListener("DOMContentLoaded", function () {
   const slider = document.querySelector(".slider");
   const slides = document.querySelectorAll(".slide");
@@ -27,13 +51,17 @@ document.addEventListener("DOMContentLoaded", function () {
   // Inicializar o primeiro slide
   slides[0].classList.add("active");
 
-  // Função para ir para um slide específico
+  /**
+   * Função para navegar para um slide específico
+   * @param {number} index - Índice do slide de destino
+   */
   function goToSlide(index) {
     slides[currentSlide].classList.remove("active");
     document.querySelectorAll(".dot")[currentSlide].classList.remove("active");
 
     currentSlide = index;
 
+    // Loop infinito dos slides
     if (currentSlide >= slides.length) currentSlide = 0;
     if (currentSlide < 0) currentSlide = slides.length - 1;
 
@@ -55,7 +83,9 @@ document.addEventListener("DOMContentLoaded", function () {
   if (prevButton) prevButton.addEventListener("click", prevSlide);
   if (nextButton) nextButton.addEventListener("click", nextSlide);
 
-  // Iniciar slideshow automático
+  /**
+   * Iniciar slideshow automático
+   */
   function startSlideshow() {
     if (slideInterval) {
       clearInterval(slideInterval);
@@ -75,6 +105,10 @@ document.addEventListener("DOMContentLoaded", function () {
   startSlideshow();
 });
 
+// ========================================
+// 2. Highlight do Link Atual no Menu
+// ========================================
+
 // Adiciona classe active ao link da página atual
 document.addEventListener("DOMContentLoaded", function () {
   const currentLocation = location.pathname;
@@ -89,7 +123,13 @@ document.addEventListener("DOMContentLoaded", function () {
   animateFeatureCards();
 });
 
-// Animação suave para elementos
+// ========================================
+// 3. Animação dos Cards de Recursos
+// ========================================
+
+/**
+ * Animação suave para elementos feature cards
+ */
 function animateFeatureCards() {
   const cards = document.querySelectorAll(".feature-card");
   cards.forEach((card, index) => {
@@ -100,7 +140,10 @@ function animateFeatureCards() {
   });
 }
 
-// Hamburger menu functionality
+// ========================================
+// 4. Menu Mobile (Hamburger)
+// ========================================
+
 document.addEventListener("DOMContentLoaded", function () {
   const hamburger = document.querySelector(".hamburger");
   const nav = document.querySelector(".main-nav");
@@ -132,6 +175,10 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 });
 
+// ========================================
+// 5. Animação do Header ao Scroll
+// ========================================
+
 // Adiciona animação ao scroll
 window.addEventListener("scroll", function () {
   const header = document.querySelector("header");
@@ -142,13 +189,15 @@ window.addEventListener("scroll", function () {
   }
 });
 
+// ========================================
+// 6. Sistema de Filtros de Pesquisa
+// ========================================
+
 // Funcionalidade de busca e filtros para pesquisa.php
 document.addEventListener("DOMContentLoaded", function () {
-  // Funcionalidade de busca por texto
+  // Elementos do DOM para busca e filtros
   const searchInput = document.getElementById("searchDestino");
   const searchButton = document.querySelector(".search-button");
-
-  // Funcionalidade de filtros
   const priceRange = document.getElementById("priceRange");
   const priceValue = document.querySelector(".price-value");
   const filterCheckboxes = document.querySelectorAll(
@@ -162,7 +211,10 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Função para filtrar casas
+  /**
+   * Função principal para filtrar casas
+   * Verifica múltiplos critérios: busca, preço, freguesia e tipo
+   */
   function filterCasas() {
     const cards = document.querySelectorAll(".destination-card");
     const searchTerm = searchInput
@@ -193,15 +245,6 @@ document.addEventListener("DOMContentLoaded", function () {
       const cidade = (card.dataset.cidade || "").toLowerCase();
       const tipo = (card.dataset.tipo || "").toLowerCase();
       const freguesia = (card.dataset.freguesia || "").toLowerCase().trim();
-
-      // Debug (remover em produção)
-      console.log("Card:", {
-        title: title.substring(0, 20),
-        preco,
-        freguesia,
-        tipo,
-        cidade,
-      });
 
       // Filtro de busca por texto (título, descrição ou cidade)
       const matchesSearch =
@@ -256,13 +299,6 @@ document.addEventListener("DOMContentLoaded", function () {
     } else if (noResults) {
       noResults.remove();
     }
-
-    console.log("Filtro aplicado:", {
-      visibleCount,
-      total: cards.length,
-      maxPrice,
-      selectedFreguesias,
-    });
   }
 
   // Event listeners para filtros
@@ -297,7 +333,10 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 });
 
-// Validação do formulário de adicionar casa
+// ========================================
+// 7. Validação do Formulário de Adicionar Casa
+// ========================================
+
 document.addEventListener("DOMContentLoaded", function () {
   const casaForm = document.querySelector(".casa-form");
   if (casaForm) {
@@ -335,6 +374,10 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 });
 
+// ========================================
+// 8. Campo "Outro" no Tipo de Propriedade
+// ========================================
+
 document.addEventListener("DOMContentLoaded", () => {
   const select = document.querySelector('select[name="tipo_propriedade"]');
   const campoOutro = document.getElementById("campo-outro");
@@ -368,6 +411,10 @@ document.addEventListener("DOMContentLoaded", () => {
   controlarCampoOutro();
 });
 
+// ========================================
+// 9. Navegação do Perfil e Validação
+// ========================================
+
 // Navegação suave e validação para perfil.php
 document.addEventListener("DOMContentLoaded", function () {
   // Navegação suave entre seções
@@ -375,7 +422,7 @@ document.addEventListener("DOMContentLoaded", function () {
     link.addEventListener("click", function (e) {
       const href = this.getAttribute("href");
 
-      // Só aplicar comportamento de scroll suave para âncoras internas (links que começam com #)
+      // Só aplicar comportamento de scroll suave para âncoras internas
       if (href.startsWith("#")) {
         e.preventDefault();
         const targetId = href.substring(1);
@@ -397,11 +444,10 @@ document.addEventListener("DOMContentLoaded", function () {
           });
         }
       }
-      // Se não começar com #, deixa o link navegar normalmente para a página externa
     });
   });
 
-  // Form validation
+  // Validação do formulário de alteração de senha
   const passwordForm = document.querySelector(
     'form[action*="change_password"]',
   );
@@ -439,13 +485,20 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 });
 
+// ========================================
+// 10. Modal e Filtros para Reservas
+// ========================================
+
 // Modal e filtros para reservas.php
 document.addEventListener("DOMContentLoaded", function () {
   const detailsModal = document.getElementById("detailsModal");
   const modalDetailsContent = document.getElementById("modalDetailsContent");
 
   if (detailsModal) {
-    // Função para mostrar detalhes da reserva
+    /**
+     * Função para mostrar detalhes da reserva em um modal
+     * @param {Object} reserva - Objeto com dados da reserva
+     */
     window.showReservaDetails = function (reserva) {
       const statusMap = {
         pendente: "Pendente",
@@ -459,10 +512,7 @@ document.addEventListener("DOMContentLoaded", function () {
         <div class="modal-detalhes">
           <div class="detalhe-item">
             <div class="detalhe-label">ID da Reserva</div>
-            <div class="detalhe-valor">#${String(reserva.id).padStart(
-              5,
-              "0",
-            )}</div>
+            <div class="detalhe-valor">#${String(reserva.id).padStart(5, "0")}</div>
           </div>
           <div class="detalhe-item">
             <div class="detalhe-label">Propriedade</div>
@@ -474,9 +524,7 @@ document.addEventListener("DOMContentLoaded", function () {
           </div>
           <div class="detalhe-item">
             <div class="detalhe-label">Check-out</div>
-            <div class="detalhe-valor">${formatDate(
-              reserva.data_checkout,
-            )}</div>
+            <div class="detalhe-valor">${formatDate(reserva.data_checkout)}</div>
           </div>
           <div class="detalhe-item">
             <div class="detalhe-label">Noites</div>
@@ -494,9 +542,7 @@ document.addEventListener("DOMContentLoaded", function () {
           </div>
           <div class="detalhe-item">
             <div class="detalhe-label">Data da Reserva</div>
-            <div class="detalhe-valor">${formatDateTime(
-              reserva.data_reserva,
-            )}</div>
+            <div class="detalhe-valor">${formatDateTime(reserva.data_reserva)}</div>
           </div>
         </div>
         
@@ -537,7 +583,9 @@ document.addEventListener("DOMContentLoaded", function () {
       detailsModal.style.display = "flex";
     };
 
-    // Função para fechar modal
+    /**
+     * Função para fechar o modal
+     */
     window.closeModal = function () {
       detailsModal.style.display = "none";
     };
@@ -549,7 +597,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
 
-    // Funções auxiliares
+    // Funções auxiliares de formatação
     function formatDate(dateStr) {
       const date = new Date(dateStr);
       return date.toLocaleDateString("pt-PT");
@@ -560,7 +608,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return date.toLocaleString("pt-PT");
     }
 
-    // Filtros
+    // Filtros de reservas
     window.filterByStatus = function (status) {
       const url = new URL(window.location.href);
       url.searchParams.set("filtro", status);
@@ -588,6 +636,10 @@ document.addEventListener("DOMContentLoaded", function () {
     };
   }
 });
+
+// ========================================
+// 11. Formulário de Contacto
+// ========================================
 
 // Formulário de contato para contactos.php
 document.addEventListener("DOMContentLoaded", function () {
@@ -635,6 +687,10 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 });
 
+// ========================================
+// 12. Filtros e Modal para Minhas Casas
+// ========================================
+
 // Filtros e modal para minhas_casas.php
 document.addEventListener("DOMContentLoaded", function () {
   // Filtros
@@ -672,13 +728,18 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
-  // Modal
+  // Modal de eliminação
   const deleteModal = document.getElementById("deleteModal");
   const deleteForm = document.getElementById("deleteForm");
   const modalMessage = document.getElementById("modalMessage");
   const deleteCasaId = document.getElementById("deleteCasaId");
 
   if (deleteModal) {
+    /**
+     * Mostrar modal de confirmação de eliminação
+     * @param {number} id - ID da casa a eliminar
+     * @param {string} titulo - Título da casa
+     */
     window.showDeleteModal = function (id, titulo) {
       modalMessage.textContent = `Tem certeza que deseja eliminar a propriedade "${titulo}"?`;
       deleteCasaId.value = id;
@@ -705,6 +766,10 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 });
+
+// ========================================
+// 13. Funcionalidade da Sidebar
+// ========================================
 
 // Funcionalidade do Sidebar - Versão Robusta
 (function () {
@@ -807,6 +872,10 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 })();
 
+// ========================================
+// 14. Campo "Outro" Tipo de Propriedade
+// ========================================
+
 // Mostrar/ocultar campo "outro" tipo de propriedade
 document.addEventListener("DOMContentLoaded", function () {
   const selectTipo = document.querySelector('select[name="tipo_propriedade"]');
@@ -821,6 +890,10 @@ document.addEventListener("DOMContentLoaded", function () {
     selectTipo.dispatchEvent(new Event("change"));
   }
 });
+
+// ========================================
+// 15. Campos de Hora (Check-in/Check-out)
+// ========================================
 
 // Função para combinar hora e minuto nos campos hidden (check-in/check-out)
 document.addEventListener("DOMContentLoaded", function () {
@@ -869,6 +942,10 @@ document.addEventListener("DOMContentLoaded", function () {
   updateTimeFields();
 });
 
+// ========================================
+// 16. Atualização do Ano no Footer
+// ========================================
+
 // Atualizar ano no footer
 document.addEventListener("DOMContentLoaded", function () {
   const anoElement = document.getElementById("ano");
@@ -876,6 +953,10 @@ document.addEventListener("DOMContentLoaded", function () {
     anoElement.textContent = new Date().getFullYear();
   }
 });
+
+// ========================================
+// 17. Verificação do Sistema de Notificações
+// ========================================
 
 // Verificar se o sistema de notificações carregou corretamente
 document.addEventListener("DOMContentLoaded", function () {
@@ -885,6 +966,10 @@ document.addEventListener("DOMContentLoaded", function () {
     console.log("[AlugaTorres] Sistema de notificações pronto");
   }
 });
+
+// ========================================
+// 18. Gráfico de Reservas (Chart.js)
+// ========================================
 
 // Gráfico de Reservas (apenas se Chart.js estiver disponível e canvas existir)
 document.addEventListener("DOMContentLoaded", function () {
@@ -916,6 +1001,10 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 
+// ========================================
+// 19. Definição do Tipo de Utilizador
+// ========================================
+
 // Definir perfilTipoUsuario a partir de data attribute
 document.addEventListener("DOMContentLoaded", function () {
   const body = document.body;
@@ -923,6 +1012,10 @@ document.addEventListener("DOMContentLoaded", function () {
     window.perfilTipoUsuario = body.dataset.tipoUsuario;
   }
 });
+
+// ========================================
+// 20. Funcionalidades de Admin
+// ========================================
 
 // Admin: Modal de Rejeição e Exportação CSV
 document.addEventListener("DOMContentLoaded", function () {
@@ -989,6 +1082,10 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 });
 
+// ========================================
+// 21. Gráficos de Estatísticas (Admin)
+// ========================================
+
 // Admin: Gráficos de Estatísticas (com data attributes)
 document.addEventListener("DOMContentLoaded", function () {
   if (typeof Chart === "undefined") return;
@@ -997,18 +1094,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const reservasCanvas = document.getElementById("reservasChart");
   if (reservasCanvas && reservasCanvas.dataset.reservas) {
     const meses = [
-      "Jan",
-      "Fev",
-      "Mar",
-      "Abr",
-      "Mai",
-      "Jun",
-      "Jul",
-      "Ago",
-      "Set",
-      "Out",
-      "Nov",
-      "Dez",
+      "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+      "Jul", "Ago", "Set", "Out", "Nov", "Dez",
     ];
     const reservasData = JSON.parse(reservasCanvas.dataset.reservas);
 
@@ -1035,18 +1122,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const receitasCanvas = document.getElementById("receitasChart");
   if (receitasCanvas && receitasCanvas.dataset.receitas) {
     const meses = [
-      "Jan",
-      "Fev",
-      "Mar",
-      "Abr",
-      "Mai",
-      "Jun",
-      "Jul",
-      "Ago",
-      "Set",
-      "Out",
-      "Nov",
-      "Dez",
+      "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+      "Jul", "Ago", "Set", "Out", "Nov", "Dez",
     ];
     const receitasData = JSON.parse(receitasCanvas.dataset.receitas);
 
@@ -1075,18 +1152,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const utilizadoresCanvas = document.getElementById("utilizadoresChart");
   if (utilizadoresCanvas && utilizadoresCanvas.dataset.utilizadores) {
     const meses = [
-      "Jan",
-      "Fev",
-      "Mar",
-      "Abr",
-      "Mai",
-      "Jun",
-      "Jul",
-      "Ago",
-      "Set",
-      "Out",
-      "Nov",
-      "Dez",
+      "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+      "Jul", "Ago", "Set", "Out", "Nov", "Dez",
     ];
     const utilizadoresData = JSON.parse(
       utilizadoresCanvas.dataset.utilizadores,
@@ -1112,6 +1179,10 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 });
 
+// ========================================
+// 22. Sistema de Reservas (Arrendatário/Proprietário)
+// ========================================
+
 // Sistema de Reservas (arrendatario/reservas.php)
 document.addEventListener("DOMContentLoaded", function () {
   // Verificar se estamos na página de reservas
@@ -1133,7 +1204,7 @@ document.addEventListener("DOMContentLoaded", function () {
     loadCasas();
   }
 
-  // Carregar reservas
+  // Carregar reservas da API
   async function loadReservas() {
     reservasContent.innerHTML =
       '<div class="loading-spinner"><i class="fas fa-spinner"></i></div>';
@@ -1342,7 +1413,7 @@ document.addEventListener("DOMContentLoaded", function () {
     reservasContent.innerHTML = html;
   }
 
-  // Ações em reservas
+  // Ações em reservas (confirmar, cancelar, etc.)
   window.handleReservaAction = async function (action, reservaId) {
     const confirmMessages = {
       confirmar: "Confirmar esta reserva?",
@@ -1382,7 +1453,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   };
 
-  // Filtros
+  // Filtros de reservas
   window.filterByStatus = function (status) {
     currentFiltro = status;
 
@@ -1411,7 +1482,7 @@ document.addEventListener("DOMContentLoaded", function () {
     loadReservas();
   };
 
-  // Modal
+  // Modal de detalhes
   window.showReservaDetails = function (reserva) {
     const statusMap = {
       pendente: "Pendente",
@@ -1477,7 +1548,7 @@ document.addEventListener("DOMContentLoaded", function () {
           <h4>Notas</h4>
           <p>${escapeHtml(reserva.notas)}</p>
         </div>
-      `
+    `
           : ""
       }
     `;
@@ -1504,7 +1575,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Utilitários
+  // Funções utilitárias
   function showError(message) {
     const container = document.getElementById("message-container");
     if (container) {
@@ -1540,6 +1611,10 @@ document.addEventListener("DOMContentLoaded", function () {
     return date.toLocaleString("pt-PT");
   }
 });
+
+// ========================================
+// 23. Newsletter Subscription
+// ========================================
 
 // Newsletter subscription - "Não Perca Nossas Ofertas"
 document.addEventListener("DOMContentLoaded", function () {

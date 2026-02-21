@@ -1,64 +1,108 @@
 <?php
+
+/**
+ * ========================================
+ * Perfil do Utilizador - AlugaTorres
+ * ========================================
+ * Este arquivo permite ao utilizador visualizar e editar o seu perfil,
+ * incluindo dados pessoais, alterar senha e gerir propriedades (se for proprietário).
+ * 
+ * @author AlugaTorres
+ * @version 1.0
+ */
+
+// ============================================
+// Inicialização da Sessão
+// ============================================
+
 session_start();
+
+// ============================================
+// Inclusão de Arquivos Necessários
+// ============================================
+
 require_once 'backend/db.php';
 
+// ============================================
+// Verificação de Autenticação
+// ============================================
 
 if (!isset($_SESSION['user_id'])) {
-
+    // Se não estiver logado, redireciona para a página de login
     header("Location: backend/login.php");
     exit;
 }
+
+// ============================================
+// Verificação de Utilizador Válido
+// ============================================
 
 // Verificar se o usuário ainda existe na base de dados
 $stmt = $conn->prepare("SELECT id FROM utilizadores WHERE id = ?");
 $stmt->bind_param("i", $_SESSION['user_id']);
 $stmt->execute();
 $result = $stmt->get_result();
+
+// Se o utilizador não existir, destrói a sessão
 if ($result->num_rows === 0) {
     session_destroy();
     header("Location: backend/login.php");
     exit;
 }
 
+// ============================================
+// Obtenção de Dados do Utilizador
+// ============================================
+
 $user_id = $_SESSION['user_id'];
 $user_name = $_SESSION['user'];
 $email = $_SESSION['email'];
 $tipo_utilizador = $_SESSION['tipo_utilizador'] ?? 'arrendatario';
 
-// Calcular estatísticas dinâmicas
+// ============================================
+// Cálculo de Estatísticas Dinâmicas
+// ============================================
+
 $stats = [];
+
 if ($tipo_utilizador === 'proprietario') {
-    // Propriedades
+    // ------------------------------------------
+    // Estatísticas do Proprietário
+    // ------------------------------------------
+
+    // 1. Total de propriedades
     $stmt = $conn->prepare("SELECT COUNT(*) as total FROM casas WHERE proprietario_id = ?");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $stats['propriedades'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
 
-    // Reservas Totais (excluir canceladas e rejeitadas)
+    // 2. Total de reservas (excluir canceladas e rejeitadas)
     $stmt = $conn->prepare("SELECT COUNT(*) as total FROM reservas r JOIN casas c ON r.casa_id = c.id WHERE c.proprietario_id = ? AND r.status NOT IN ('cancelada', 'rejeitada')");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $stats['reservas_totais'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
 
-
-    // Receita Total (todas as reservas exceto canceladas e rejeitadas)
+    // 3. Receita total (todas as reservas exceto canceladas e rejeitadas)
     $stmt = $conn->prepare("SELECT SUM(r.total) as total FROM reservas r JOIN casas c ON r.casa_id = c.id WHERE c.proprietario_id = ? AND r.status NOT IN ('cancelada', 'rejeitada')");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $receita_total = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
     $stats['receita_total'] = '€' . number_format($receita_total, 2, ',', '.');
 } else {
-    // Reservas Feitas (excluir canceladas e rejeitadas)
+    // ------------------------------------------
+    // Estatísticas do Arrendatário
+    // ------------------------------------------
+
+    // 1. Reservas feitas (excluir canceladas e rejeitadas)
     $stmt = $conn->prepare("SELECT COUNT(*) as total FROM reservas WHERE arrendatario_id = ? AND status NOT IN ('cancelada', 'rejeitada')");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
     $stats['reservas_feitas'] = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
 
+    // 2. Favoritos (placeholder até implementar)
+    $stats['favoritos'] = 0;
 
-    // Favoritos (se existir tabela de favoritos)
-    $stats['favoritos'] = 0; // Placeholder até implementar favoritos
-
-    // Total Gastos (todas as reservas exceto canceladas e rejeitadas)
+    // 3. Total gasto em reservas
     $stmt = $conn->prepare("SELECT SUM(total) as total FROM reservas WHERE arrendatario_id = ? AND status NOT IN ('cancelada', 'rejeitada')");
     $stmt->bind_param("i", $user_id);
     $stmt->execute();
@@ -66,19 +110,33 @@ if ($tipo_utilizador === 'proprietario') {
     $stats['total_gastos'] = '€' . number_format($total_gastos, 2, ',', '.');
 }
 
-// Obter dados do utilizador
+// ============================================
+// Obter Dados Completos do Utilizador
+// ============================================
+
 $query = $conn->prepare("SELECT * FROM utilizadores WHERE id = ?");
 $query->bind_param("i", $user_id);
 $query->execute();
 $result = $query->get_result();
 $user_data = $result->fetch_assoc();
 
+// ============================================
+// Inicialização de Variáveis
+// ============================================
+
 $error = '';
 $success = '';
+
+// ============================================
+// Processamento de Formulários (POST)
+// ============================================
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
+    // ------------------------------------------
+    // Atualização do Perfil
+    // ------------------------------------------
     if ($action === 'update_profile') {
         $novo_nome = trim($_POST['nome']);
         $telefone = trim($_POST['telefone']);
@@ -89,8 +147,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_param("ssssi", $novo_nome, $telefone, $morada, $nif, $user_id);
 
         if ($stmt->execute()) {
+            // Atualiza o nome na sessão
             $_SESSION['user'] = $novo_nome;
             $success = 'Perfil atualizado com sucesso!';
+
+            // Atualiza os dados locais
             $user_data['utilizador'] = $novo_nome;
             $user_data['telefone'] = $telefone;
             $user_data['morada'] = $morada;
@@ -98,6 +159,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $error = 'Erro ao atualizar perfil: ' . $conn->error;
         }
+
+        // ------------------------------------------
+        // Alteração de Senha
+        // ------------------------------------------
     } elseif ($action === 'change_password') {
         $senha_atual = $_POST['senha_atual'];
         $nova_senha = $_POST['nova_senha'];
@@ -111,6 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (strlen($nova_senha) < 6) {
             $error = 'A nova senha deve ter pelo menos 6 caracteres!';
         } else {
+            // Hash da nova senha
             $hash_nova_senha = password_hash($nova_senha, PASSWORD_DEFAULT);
             $stmt = $conn->prepare("UPDATE utilizadores SET palavrapasse_hash = ? WHERE id = ?");
             $stmt->bind_param("si", $hash_nova_senha, $user_id);
@@ -123,8 +189,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
-
-
 ?>
 
 
@@ -132,20 +196,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="pt">
 
 <head>
+    <!-- ========================================
+         Meta Tags e Configurações
+         ======================================== -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meu Perfil - AlugaTorres</title>
+
+    <!-- ========================================
+         Folhas de Estilo (CSS)
+         ======================================== -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="style/style.css">
     <link rel="website icon" type="png" href="style/img/Logo_AlugaTorres_branco.png">
 </head>
 
-<body data-tipo-usuario="<?php echo $tipo_utilizador; ?>">
-    <?php include 'header.php'; ?>
+<!-- Passa o tipo de utilizador para o JavaScript -->
 
+<body data-tipo-usuario="<?php echo $tipo_utilizador; ?>">
+
+    <!-- ========================================
+         Inclusão de Componentes
+         ======================================== -->
+    <?php include 'header.php'; ?>
     <?php include 'sidebar.php'; ?>
 
+    <!-- ========================================
+         Container Principal do Perfil
+         ======================================== -->
     <div class="profile-container">
+
+        <!-- ========================================
+             Cabeçalho do Perfil
+             ======================================== -->
         <div class="profile-header">
             <h1 class="profile-title">Meu Perfil</h1>
             <a href="dashboard.php" class="back-btn">
@@ -153,6 +236,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </a>
         </div>
 
+        <!-- ========================================
+             Mensagens de Feedback
+             ======================================== -->
         <?php if ($error): ?>
             <div class="message error"><?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
@@ -161,21 +247,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="message success"><?php echo htmlspecialchars($success); ?></div>
         <?php endif; ?>
 
+        <!-- ========================================
+             Grid do Perfil
+             ======================================== -->
         <div class="profile-grid">
+
+            <!-- ========================================
+                 Sidebar do Perfil
+                 ======================================== -->
             <div class="profile-sidebar">
                 <div class="profile-avatar">
                     <div class="avatar-circle" id="sidebar-avatar">
                         <i class="fas fa-user"></i>
                     </div>
 
-
+                    <!-- Nome do utilizador -->
                     <div class="user-name"><?php echo htmlspecialchars($user_name); ?></div>
 
+                    <!-- Tipo de utilizador -->
                     <div class="user-type">
                         <?php echo $tipo_utilizador === 'proprietario' ? '🏠 Proprietário' : '👤 Arrendatário'; ?>
                     </div>
                 </div>
 
+                <!-- Menu de navegação do perfil -->
                 <ul class="profile-menu">
                     <li><a href="#dados-pessoais" class="active">
                             <i class="fas fa-user-circle"></i> Dados Pessoais
@@ -201,9 +296,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <i class="fas fa-cog"></i> Definições
                     </a>
                 </li>
-
                 </ul>
 
+                <!-- Botão de logout -->
                 <div style="align-items: center;margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
                     <a href="backend/logout.php" class="btn-save logout-btn">
                         <i class="fas fa-sign-out-alt"></i> Terminar Sessão
@@ -211,11 +306,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
+            <!-- ========================================
+                 Conteúdo Principal do Perfil
+                 ======================================== -->
             <div class="profile-content">
-                <!-- Dados Pessoais -->
+
+                <!-- ========================================
+                     Seção: Dados Pessoais
+                     ======================================== -->
                 <section id="dados-pessoais">
                     <h2 class="section-title"><i class="fas fa-user-circle"></i> Dados Pessoais</h2>
 
+                    <!-- Estatísticas (diferentes por tipo de utilizador) -->
                     <?php if ($tipo_utilizador === 'proprietario'): ?>
                         <div class="stats-grid">
                             <div class="stat-card">
@@ -230,7 +332,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <span class="stat-number"><?php echo $stats['receita_total']; ?></span>
                                 <span class="stat-label">Receita Total</span>
                             </div>
-
                         </div>
                     <?php else: ?>
                         <div class="stats-grid">
@@ -246,10 +347,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <span class="stat-number"><?php echo $stats['total_gastos']; ?></span>
                                 <span class="stat-label">Total Gastos</span>
                             </div>
-
                         </div>
                     <?php endif; ?>
 
+                    <!-- Formulário de Atualização de Dados -->
                     <form method="POST" action="perfil.php">
                         <input type="hidden" name="action" value="update_profile">
 
@@ -296,7 +397,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <hr style="margin: 40px 0; border: none; border-top: 1px solid #eee;">
 
-                <!-- Alterar Senha -->
+                <!-- ========================================
+                     Seção: Alterar Senha
+                     ======================================== -->
                 <section id="alterar-senha">
                     <h2 class="section-title"><i class="fas fa-lock"></i> Alterar Senha</h2>
 
@@ -328,10 +431,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </form>
                 </section>
 
+                <!-- ========================================
+                     Seção: Área do Proprietário
+                     ======================================== -->
                 <?php if ($tipo_utilizador === 'proprietario'): ?>
                     <hr style="margin: 40px 0; border: none; border-top: 1px solid #eee;">
 
-                    <!-- Área do Proprietário -->
                     <section id="minhas-casas">
                         <h2 class="section-title"><i class="fas fa-home"></i> Minhas Propriedades</h2>
 
@@ -349,10 +454,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                     </section>
+
+                    <!-- ========================================
+                     Seção: Área do Arrendatário
+                     ======================================== -->
                 <?php elseif ($tipo_utilizador === 'arrendatario'): ?>
                     <hr style="margin: 40px 0; border: none; border-top: 1px solid #eee;">
 
-                    <!-- Área do Arrendatário -->
                     <section id="minhas-reservas">
                         <h2 class="section-title"><i class="fas fa-calendar-check"></i> Minhas Reservas</h2>
 
@@ -369,7 +477,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </section>
                 <?php endif; ?>
 
-                <!-- Zona de Perigo -->
+                <!-- ========================================
+                     Zona de Perigo (Eliminar Conta)
+                     ======================================== -->
                 <div class="danger-zone">
                     <h3><i class="fas fa-exclamation-triangle"></i> Zona de Perigo</h3>
                     <p>Esta ação não pode ser desfeita. Ao eliminar sua conta, perderá todos os dados.</p>
@@ -382,11 +492,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
+    <!-- ========================================
+         Rodapé da Página
+         ======================================== -->
     <?php include 'footer.php'; ?>
 
+    <!-- ========================================
+         Scripts JavaScript
+         ======================================== -->
     <script src="js/script.js"></script>
 
 </body>
-
 
 </html>

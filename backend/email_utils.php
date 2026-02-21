@@ -1,10 +1,43 @@
 <?php
 // Utilitários de email para todo o projeto
 // Suporta both native mail() e SMTP
+// Configurações carregadas do ficheiro .env para maior segurança
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 require_once __DIR__ . '/class.smtp.php';
+
+/**
+ * Carregar variáveis de ambiente do ficheiro .env
+ */
+function loadEnv($filePath)
+{
+    if (!file_exists($filePath)) {
+        return;
+    }
+
+    $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0) {
+            continue; // Skip comments
+        }
+
+        if (strpos($line, '=') !== false) {
+            list($key, $value) = explode('=', $line, 2);
+            $key = trim($key);
+            $value = trim($value);
+
+            if (!array_key_exists($key, $_ENV) && !array_key_exists($key, $_SERVER)) {
+                putenv("$key=$value");
+                $_ENV[$key] = $value;
+                $_SERVER[$key] = $value;
+            }
+        }
+    }
+}
+
+// Carregar variáveis de ambiente
+loadEnv(__DIR__ . '/.env');
 
 /**
  * Obter email de suporte (recebe mensagens do formulário de contactos)
@@ -55,6 +88,7 @@ function logEmail($to, $subject, $body, $status = 'sent')
 
 /**
  * Carregar configurações de email
+ * Primeiro tenta ler do .env, depois do email_config.php (retrocompatibilidade)
  */
 function getEmailConfig()
 {
@@ -71,12 +105,31 @@ function getEmailConfig()
         'mailer' => 'mail'
     ];
 
-    if (file_exists(__DIR__ . '/email_config.php')) {
-        $config = include __DIR__ . '/email_config.php';
-        return array_merge($default, $config);
+    // Primeiro: tentar carregar de variáveis de ambiente (.env)
+    $envConfig = [];
+    if (!empty(getenv('SMTP_HOST'))) {
+        $envConfig = [
+            'smtp_host' => getenv('SMTP_HOST'),
+            'smtp_port' => getenv('SMTP_PORT') ?: 465,
+            'smtp_user' => getenv('SMTP_USER'),
+            'smtp_pass' => getenv('SMTP_PASS'),
+            'from_email' => getenv('FROM_EMAIL'),
+            'from_name' => getenv('FROM_NAME') ?: 'AlugaTorres',
+            'support_email' => getenv('SUPPORT_EMAIL'),
+            'newsletter_email' => getenv('NEWSLETTER_EMAIL'),
+            'admin_email' => getenv('ADMIN_EMAIL'),
+            'mailer' => getenv('MAILER') ?: 'smtp'
+        ];
     }
 
-    return $default;
+    // Segundo: retrocompatibilidade com email_config.php
+    if (file_exists(__DIR__ . '/email_config.php')) {
+        $fileConfig = include __DIR__ . '/email_config.php';
+        return array_merge($default, $envConfig, $fileConfig);
+    }
+
+    // Retornar apenas configuração do .env ou defaults
+    return array_merge($default, $envConfig);
 }
 
 /**

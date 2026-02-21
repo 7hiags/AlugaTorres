@@ -1,9 +1,34 @@
 <?php
+
+/**
+ * ========================================
+ * Adicionar Casa - Formulário de Nova Propriedade
+ * ========================================
+ * Este arquivo permite aos proprietários adicionar novas casas
+ * ao sistema de arrendamento. Inclui validação, sanitização
+ * e inserção no banco de dados.
+ * 
+ * @author AlugaTorres
+ * @version 1.0
+ */
+
+// ============================================
+// Inicialização da Sessão
+// ============================================
+
 session_start();
+
+// ============================================
+// Inclusão de Arquivos Necessários
+// ============================================
+
 require_once '../backend/db.php';
 
+// ============================================
+// Verificação de Permissão
+// ============================================
 
-// Verificar se é proprietário
+// Verificar se é proprietário (acesso restrito)
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['tipo_utilizador']) || $_SESSION['tipo_utilizador'] !== 'proprietario') {
     header("Location: ../backend/login.php");
     exit;
@@ -20,13 +45,23 @@ if ($result->num_rows === 0) {
     exit;
 }
 
+// ============================================
+// Variáveis de Controle
+// ============================================
+
 $user_id = $_SESSION['user_id'];
 $error = '';
 $success = '';
 
+// ============================================
+// Processamento do Formulário (POST)
+// ============================================
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
-        // Validar e sanitizar dados
+        // ------------------------------------------
+        // Captura e Sanitização dos Dados
+        // ------------------------------------------
         $titulo = trim($_POST['titulo']);
         $descricao = trim($_POST['descricao']);
         $morada = trim($_POST['morada']);
@@ -53,7 +88,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $regras = trim($_POST['regras']);
 
-        // Validações básicas
+        // ------------------------------------------
+        // Validações Básicas
+        // ------------------------------------------
         if (empty($titulo) || empty($morada) || empty($preco_noite)) {
             throw new \Exception('Preencha todos os campos obrigatórios');
         }
@@ -62,8 +99,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new \Exception('Preço por noite deve ser maior que zero');
         }
 
-
-        // Inserir no banco
+        // ------------------------------------------
+        // Inserção no Banco de Dados
+        // ------------------------------------------
         $stmt = $conn->prepare("
             INSERT INTO casas (
                 proprietario_id, titulo, descricao, morada, codigo_postal, cidade, freguesia,
@@ -101,41 +139,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($stmt->execute()) {
             $casa_id = $stmt->insert_id;
-
             $success = 'Casa adicionada com sucesso!';
-
+            // Redireciona para a página de edição com mensagem de sucesso
             header("Location: editar_casa.php?id=$casa_id&success=1");
             exit;
         } else {
             throw new \Exception('Erro ao salvar no banco de dados: ' . $conn->error);
         }
+
+        // ============================================
+        // Tratamento de Exceções
+        // ============================================
     } catch (\Exception $e) {
         $error = $e->getMessage();
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="pt-pt">
 
 <head>
+    <!-- ========================================
+         Meta Tags e Configurações
+         ======================================== -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AlugaTorres | Adicionar Casa</title>
+
+    <!-- ========================================
+         Folhas de Estilo (CSS)
+         ======================================== -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="../style/style.css">
     <link rel="website icon" type="png" href="../style/img/Logo_AlugaTorres_branco.png">
 </head>
 
 <body>
+    <!-- ========================================
+         Inclusão de Componentes
+         ======================================== -->
     <?php include '../header.php'; ?>
     <?php include '../sidebar.php'; ?>
 
+    <!-- ========================================
+         Container do Formulário
+         ======================================== -->
     <div class="form-container-casa">
+
+        <!-- ========================================
+             Cabeçalho do Formulário
+             ======================================== -->
         <div class="form-header">
             <h1 class="form-title">Adicionar Nova Casa</h1>
             <p class="form-subtitle">Preencha os detalhes da sua propriedade para começar a receber reservas</p>
         </div>
 
+        <!-- Mensagens de Feedback -->
         <?php if ($error): ?>
             <div class="message error">
                 <?php echo htmlspecialchars($error); ?>
@@ -153,8 +213,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         <?php endif; ?>
 
+        <!-- ========================================
+             Formulário de Adicionar Casa
+             ======================================== -->
         <form method="POST" class="casa-form">
-            <!-- Seção 1: Informações Básicas -->
+
+            <!-- ========================================
+                 Seção 1: Informações Básicas
+                 ======================================== -->
             <div class="form-section">
                 <h2 class="section-title"><i class="fas fa-info-circle"></i> Informações Básicas</h2>
 
@@ -177,7 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </select>
                         <div id="campo-outro" class="hidden-outro" style="margin-top: 10px;">
                             <input type="text" name="outro_texto" placeholder="Especifique outro tipo de propriedade" class="form-control"
-                                value="<?php echo isset($_POST['outro_texto']) ? htmlspecialchars($_POST['outro_texto']) : ''; ?>">
+                                value="<?php echo isset($_POST['outro_texto']) ? htmlspecialchars($_POST['']) : ''; ?>">
                         </div>
                     </div>
                 </div>
@@ -189,7 +255,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
-            <!-- Seção 2: Localização -->
+            <!-- ========================================
+                 Seção 2: Localização
+                 ======================================== -->
             <div class="form-section">
                 <h2 class="section-title"><i class="fas fa-map-marker-alt"></i> Localização</h2>
 
@@ -231,12 +299,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <option value="UFT-saopedro-lapas-ribeirab" <?php echo (isset($_POST['freguesia']) && $_POST['freguesia'] == 'UFT-saopedro-lapas-ribeirab') ? 'selected' : ''; ?>>São Pedro/Lapas/Ribeira Branca</option>
                             <option value="UF-zibreira" <?php echo (isset($_POST['freguesia']) && $_POST['freguesia'] == 'UF-zibreira') ? 'selected' : ''; ?>>Zibreira</option>
                         </select>
-
                     </div>
                 </div>
             </div>
 
-            <!-- Seção 3: Detalhes da Propriedade -->
+            <!-- ========================================
+                 Seção 3: Detalhes da Propriedade
+                 ======================================== -->
             <div class="form-section">
                 <h2 class="section-title"><i class="fas fa-home"></i> Detalhes da Propriedade</h2>
 
@@ -273,7 +342,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
-            <!-- Seção 4: Preços e Regras -->
+            <!-- ========================================
+                 Seção 4: Preços e Regras
+                 ======================================== -->
             <div class="form-section">
                 <h2 class="section-title"><i class="fas fa-euro-sign"></i> Preços e Regras</h2>
 
@@ -309,6 +380,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
 
+                <!-- Horário de Check-in e Check-out -->
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Hora de Check-in <span class="required">*</span></label>
@@ -372,16 +444,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
-            <!-- Seção 5: Comodidades -->
-
+            <!-- ========================================
+                 Seção 5: Comodidades
+                 ======================================== -->
             <div class="form-section">
                 <h2 class="section-title"><i class="fas fa-star"></i> Comodidades</h2>
 
                 <p>Selecione as comodidades disponíveis na sua propriedade:</p>
 
                 <div class="checkbox-grid">
-
                     <?php
+                    // Lista de comodidades disponíveis
                     $comodidades = [
                         'wifi' => 'Wi-Fi',
                         'tv' => 'TV',
@@ -416,7 +489,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
-            <!-- Ações do Formulário -->
+            <!-- ========================================
+                 Ações do Formulário
+                 ======================================== -->
             <div class="form-actions">
                 <a href="../dashboard.php" class="btn-cancel">
                     <i class="fas fa-times"></i> Cancelar
@@ -428,8 +503,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
     </div>
 
+    <!-- ========================================
+         Rodapé da Página
+         ======================================== -->
     <?php include '../footer.php'; ?>
 
+    <!-- ========================================
+         Scripts JavaScript
+         ======================================== -->
     <script src="../js/script.js"></script>
 
 </body>
