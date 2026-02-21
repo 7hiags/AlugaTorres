@@ -140,10 +140,11 @@ while ($casa = $result->fetch_assoc()) {
     <div class="newsletter-content">
       <h3>Não Perca Nossas Ofertas!</h3>
       <p>Inscreva-se para receber atualizações de casas disponíveis.</p>
-      <form class="newsletter-form">
-        <input type="email" placeholder="Seu melhor email" required>
+      <form class="newsletter-form" id="newsletter-form">
+        <input type="email" name="email" placeholder="Seu melhor email" required>
         <button type="submit">Inscrever-se</button>
       </form>
+      <div id="newsletter-message" style="display:none; margin-top: 15px; padding: 10px; border-radius: 5px;"></div>
     </div>
   </div>
 

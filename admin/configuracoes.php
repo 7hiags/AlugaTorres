@@ -14,8 +14,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'smtp_port' => intval($_POST['smtp_port'] ?? 587),
             'smtp_user' => $_POST['smtp_user'] ?? '',
             'smtp_pass' => $_POST['smtp_pass'] ?? '',
-            'admin_email' => $_POST['admin_email'] ?? '',
-            'from_name' => $_POST['from_name'] ?? 'AlugaTorres'
+            'from_email' => $_POST['from_email'] ?? 'no-reply@alugatorres.local',
+            'from_name' => $_POST['from_name'] ?? 'AlugaTorres',
+            'support_email' => $_POST['support_email'] ?? 'suportealugatorres@gmail.com',
+            'newsletter_email' => $_POST['newsletter_email'] ?? 'alugatorrespt@gmail.com',
+            'admin_email' => $_POST['admin_email'] ?? 'admin@alugatorres.pt',
+            'mailer' => $_POST['mailer'] ?? 'mail'
         ];
 
         // Guardar configurações (em produção, usar base de dados ou arquivo seguro)
@@ -70,8 +74,22 @@ logAdminActivity('Acesso às Configurações');
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                     <div class="form-group">
+                        <label>Email de Suporte (formulário de contactos)</label>
+                        <input type="email" name="support_email" class="form-control" value="<?php echo htmlspecialchars($config['support_email'] ?? 'suportealugatorres@gmail.com'); ?>">
+                        <small style="color: #666;">Recebe as mensagens do formulário de contactos</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Email para Newsletters</label>
+                        <input type="email" name="newsletter_email" class="form-control" value="<?php echo htmlspecialchars($config['newsletter_email'] ?? 'alugatorrespt@gmail.com'); ?>">
+                        <small style="color: #666;">Envio de newsletters e notificações</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Email do Remetente</label>
+                        <input type="email" name="from_email" class="form-control" value="<?php echo htmlspecialchars($config['from_email'] ?? 'no-reply@alugatorres.local'); ?>">
+                    </div>
+                    <div class="form-group">
                         <label>SMTP Host</label>
-                        <input type="text" name="smtp_host" class="form-control" value="<?php echo htmlspecialchars($config['smtp_host'] ?? ''); ?>">
+                        <input type="text" name="smtp_host" class="form-control" value="<?php echo htmlspecialchars($config['smtp_host'] ?? ''); ?>" placeholder="smtp.gmail.com">
                     </div>
                     <div class="form-group">
                         <label>SMTP Porta</label>
@@ -86,12 +104,19 @@ logAdminActivity('Acesso às Configurações');
                         <input type="password" name="smtp_pass" class="form-control" value="<?php echo htmlspecialchars($config['smtp_pass'] ?? ''); ?>">
                     </div>
                     <div class="form-group">
-                        <label>Email do Admin</label>
-                        <input type="email" name="admin_email" class="form-control" value="<?php echo htmlspecialchars($config['admin_email'] ?? ''); ?>">
+                        <label>Email do Admin (notificações internas)</label>
+                        <input type="email" name="admin_email" class="form-control" value="<?php echo htmlspecialchars($config['admin_email'] ?? 'admin@alugatorres.pt'); ?>">
                     </div>
                     <div class="form-group">
                         <label>Nome do Remetente</label>
                         <input type="text" name="from_name" class="form-control" value="<?php echo htmlspecialchars($config['from_name'] ?? 'AlugaTorres'); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo de Envio</label>
+                        <select name="mailer" class="form-control">
+                            <option value="mail" <?php echo ($config['mailer'] ?? 'mail') === 'mail' ? 'selected' : ''; ?>>Mail() nativo</option>
+                            <option value="smtp" <?php echo ($config['mailer'] ?? '') === 'smtp' ? 'selected' : ''; ?>>SMTP</option>
+                        </select>
                     </div>
                 </div>
 

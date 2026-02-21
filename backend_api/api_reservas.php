@@ -287,7 +287,26 @@ function checkAvailability($casa_id, $checkin, $checkout)
     $stmt->execute();
     $result = $stmt->get_result()->fetch_assoc();
 
-    return $result['conflitos'] == 0;
+    if ($result['conflitos'] > 0) {
+        return false;
+    }
+
+    // Verificar se há bloqueios conflitantes
+    $stmt_bloqueio = $conn->prepare("
+        SELECT COUNT(*) as bloqueios FROM bloqueios
+        WHERE casa_id = ?
+        AND (
+            (data_inicio <= ? AND data_fim >= ?) OR
+            (data_inicio < ? AND data_fim > ?) OR
+            (data_inicio >= ? AND data_fim <= ?)
+        )
+    ");
+    $stmt_bloqueio->bind_param("issssss", $casa_id, $checkout, $checkin, $checkout, $checkin, $checkin, $checkout);
+
+    $stmt_bloqueio->execute();
+    $result_bloqueio = $stmt_bloqueio->get_result()->fetch_assoc();
+
+    return $result_bloqueio['bloqueios'] == 0;
 }
 
 function listReservations()

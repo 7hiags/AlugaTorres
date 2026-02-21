@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once 'backend/db.php';
-require_once 'backend/upload_handler.php';
+
 
 if (!isset($_SESSION['user_id'])) {
 
@@ -121,47 +121,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Erro ao alterar senha: ' . $conn->error;
             }
         }
-    } elseif ($action === 'update_photo') {
-
-        // Processar upload de foto de perfil
-        if (isset($_FILES['foto_perfil']) && $_FILES['foto_perfil']['error'] !== UPLOAD_ERR_NO_FILE) {
-            $resultado = uploadFotoPerfil($_FILES['foto_perfil'], $user_id);
-
-            if ($resultado['sucesso']) {
-                // Remover foto antiga se existir
-                $foto_antiga = obterFotoPerfil($conn, $user_id);
-                if ($foto_antiga) {
-                    removerFoto($foto_antiga);
-                }
-
-                // Atualizar na base de dados
-                if (atualizarFotoPerfil($conn, $user_id, $resultado['caminho'])) {
-                    $success = 'Foto de perfil atualizada com sucesso!';
-                    $user_data['foto_perfil'] = $resultado['caminho'];
-                } else {
-                    $error = 'Erro ao guardar foto na base de dados.';
-                }
-            } else {
-                $error = implode(', ', $resultado['erros']);
-            }
-        } else {
-            $error = 'Nenhuma foto selecionada.';
-        }
-    } elseif ($action === 'remove_photo') {
-        // Remover foto de perfil
-        $foto_atual = obterFotoPerfil($conn, $user_id);
-        if ($foto_atual) {
-            removerFoto($foto_atual);
-            atualizarFotoPerfil($conn, $user_id, null);
-            $success = 'Foto de perfil removida com sucesso!';
-            $user_data['foto_perfil'] = null;
-        }
     }
 }
 
-// Obter foto de perfil atual
-$foto_perfil = $user_data['foto_perfil'] ?? null;
+
 ?>
+
 
 <!DOCTYPE html>
 <html lang="pt">
@@ -175,8 +140,9 @@ $foto_perfil = $user_data['foto_perfil'] ?? null;
     <link rel="website icon" type="png" href="style/img/Logo_AlugaTorres_branco.png">
 </head>
 
-<body>
+<body data-tipo-usuario="<?php echo $tipo_utilizador; ?>">
     <?php include 'header.php'; ?>
+
     <?php include 'sidebar.php'; ?>
 
     <div class="profile-container">
@@ -199,12 +165,9 @@ $foto_perfil = $user_data['foto_perfil'] ?? null;
             <div class="profile-sidebar">
                 <div class="profile-avatar">
                     <div class="avatar-circle" id="sidebar-avatar">
-                        <?php if ($foto_perfil && file_exists($foto_perfil)): ?>
-                            <img src="<?php echo htmlspecialchars($foto_perfil); ?>" alt="Foto de perfil" class="avatar-image">
-                        <?php else: ?>
-                            <i class="fas fa-user"></i>
-                        <?php endif; ?>
+                        <i class="fas fa-user"></i>
                     </div>
+
 
                     <div class="user-name"><?php echo htmlspecialchars($user_name); ?></div>
 
@@ -329,55 +292,7 @@ $foto_perfil = $user_data['foto_perfil'] ?? null;
                             <i class="fas fa-save"></i> Guardar Alterações
                         </button>
                     </form>
-
-                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
-
-                    <!-- Secção de Foto de Perfil -->
-                    <h3 class="section-subtitle"><i class="fas fa-camera"></i> Foto de Perfil</h3>
-
-                    <form method="POST" action="perfil.php" enctype="multipart/form-data" class="photo-form">
-                        <input type="hidden" name="action" value="update_photo">
-
-                        <div class="photo-upload-area">
-                            <div class="current-photo">
-                                <?php if ($foto_perfil && file_exists($foto_perfil)): ?>
-                                    <img src="<?php echo htmlspecialchars($foto_perfil); ?>" alt="Foto atual" class="photo-preview">
-                                <?php else: ?>
-                                    <div class="photo-placeholder">
-                                        <i class="fas fa-user fa-3x"></i>
-                                        <p>Sem foto de perfil</p>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-
-                            <div class="photo-actions">
-                                <div class="form-group">
-                                    <label class="form-label">Selecionar nova foto</label>
-                                    <input type="file" name="foto_perfil" class="form-input" accept="image/jpeg,image/png,image/jpg,image/webp" onchange="previewPhoto(this)">
-                                    <small class="form-hint">Formatos aceites: JPG, PNG, WebP. Tamanho máximo: 5MB.</small>
-                                </div>
-
-                                <div id="photo-preview-container" class="photo-preview-container" style="display: none;">
-                                    <p>Pré-visualização:</p>
-                                    <img id="photo-preview-img" src="" alt="Pré-visualização" class="photo-preview">
-                                </div>
-
-                                <div class="photo-buttons">
-                                    <button type="submit" class="btn-save btn-photo">
-                                        <i class="fas fa-upload"></i> Atualizar Foto
-                                    </button>
-
-                                    <?php if ($foto_perfil): ?>
-                                        <button type="submit" name="action" value="remove_photo" class="btn-danger btn-photo-remove" onclick="return confirm('Tem certeza que deseja remover a foto de perfil?')">
-                                            <i class="fas fa-trash"></i> Remover Foto
-                                        </button>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
                 </section>
-
 
                 <hr style="margin: 40px 0; border: none; border-top: 1px solid #eee;">
 
@@ -470,46 +385,6 @@ $foto_perfil = $user_data['foto_perfil'] ?? null;
     <?php include 'footer.php'; ?>
 
     <script src="js/script.js"></script>
-
-    <script>
-        window.perfilTipoUsuario = '<?php echo $tipo_utilizador; ?>';
-
-        // Pré-visualização da foto de perfil
-        function previewPhoto(input) {
-            const previewContainer = document.getElementById('photo-preview-container');
-            const previewImg = document.getElementById('photo-preview-img');
-
-            if (input.files && input.files[0]) {
-                const reader = new FileReader();
-
-                reader.onload = function(e) {
-                    const imageUrl = e.target.result;
-
-                    // Atualizar pré-visualização principal
-                    previewImg.src = imageUrl;
-                    previewContainer.style.display = 'block';
-
-                    // Atualizar avatar circle no sidebar
-                    const avatarCircle = document.getElementById('sidebar-avatar');
-                    if (avatarCircle) {
-                        avatarCircle.innerHTML = '<img src="' + imageUrl + '" alt="Foto de perfil" class="avatar-image">';
-                    }
-
-
-                    // Atualizar current-photo area
-                    const currentPhoto = document.querySelector('.current-photo');
-                    if (currentPhoto) {
-                        currentPhoto.innerHTML = '<img src="' + imageUrl + '" alt="Foto atual" class="photo-preview">';
-                    }
-                }
-
-                reader.readAsDataURL(input.files[0]);
-            } else {
-                previewContainer.style.display = 'none';
-            }
-        }
-    </script>
-
 
 </body>
 

@@ -58,3 +58,81 @@
 [2026-02-18 19:20:07] STATUS=failed-mail TO=thiagosilvauha@gmail.com SUBJECT=Nova reserva para sua propriedade: Casona
 <p>Olá Thiago da Silva,</p><p>Foi criada uma nova reserva para a sua propriedade <strong>Casona</strong>.</p><p><strong>Detalhes:</strong><br>Arrendatário: Thiago da Silva (thiagosilvauh@gmail.com)<br>Check-in: 2026-02-18<br>Check-out: 2026-02-20<br>Hóspedes: 2<br>Total: 80,00€</p><p>ID da reserva: 14</p>
 
+[2026-02-19 17:35:55] STATUS=failed-mail TO=thiagosilvauh@gmail.com SUBJECT=Reserva confirmada: Casa centro de torres novas
+<p>Olá Thiago da Silva,</p><p>Sua reserva na propriedade <strong>Casa centro de torres novas</strong> foi confirmada.</p><p><strong>Detalhes:</strong><br>Check-in: 2026-02-22<br>Check-out: 2026-02-24<br>Hóspedes: 2<br>Total: 24,00€</p><p>ID da reserva: 15</p><p>Obrigado por usar o AlugaTorres.</p>
+
+[2026-02-19 17:35:57] STATUS=failed-mail TO=thiagosilvauha@gmail.com SUBJECT=Nova reserva para sua propriedade: Casa centro de torres novas
+<p>Olá Thiago da Silva,</p><p>Foi criada uma nova reserva para a sua propriedade <strong>Casa centro de torres novas</strong>.</p><p><strong>Detalhes:</strong><br>Arrendatário: Thiago da Silva (thiagosilvauh@gmail.com)<br>Check-in: 2026-02-22<br>Check-out: 2026-02-24<br>Hóspedes: 2<br>Total: 24,00€</p><p>ID da reserva: 15</p>
+
+[2026-02-19 21:48:03] STATUS=failed-mail TO=thiagosilvauha@gmail.com SUBJECT=Bem-vindo ao AlugaTorres
+<p>Olá Thiago da Silva,</p><p>Obrigado por se registar no AlugaTorres. Agora pode pesquisar e reservar casas em Torres Novas.</p><p>Se tiver dúvidas, responda a este email.</p><p>Boas reservas!<br>Equipe AlugaTorres</p>
+
+[2026-02-19 21:48:05] STATUS=failed-mail TO=suportealugatorres@gmail.com SUBJECT=Novo utilizador registado
+<p>Um novo utilizador acabou de registar-se:</p><p><strong>Nome:</strong> Thiago da Silva<br><strong>Email:</strong> thiagosilvauha@gmail.com<br><strong>Tipo:</strong> proprietario</p>
+
+[2026-02-20 15:29:25] STATUS=failed-mail TO=thiagosilvauha@gmail.com SUBJECT=Bem-vindo ao AlugaTorres
+<p>Olá Thiago da Silva,</p><p>Obrigado por se registar no AlugaTorres. Agora pode pesquisar e reservar casas em Torres Novas.</p><p>Se tiver dúvidas, responda a este email.</p><p>Boas reservas!<br>Equipe AlugaTorres</p>
+
+[2026-02-20 15:29:27] STATUS=failed-mail TO=suportealugatorres@gmail.com SUBJECT=Novo utilizador registado
+<p>Um novo utilizador acabou de registar-se:</p><p><strong>Nome:</strong> Thiago da Silva<br><strong>Email:</strong> thiagosilvauha@gmail.com<br><strong>Tipo:</strong> proprietario</p>
+
+[2026-02-20 16:41:11] STATUS=failed-mail TO=thiagosilvauh@gmail.com SUBJECT=Bem-vindo ao AlugaTorres
+<p>Olá Thiago da Silva,</p><p>Obrigado por se registar no AlugaTorres. Agora pode pesquisar e reservar casas em Torres Novas.</p><p>Se tiver dúvidas, responda a este email.</p><p>Boas reservas!<br>Equipe AlugaTorres</p>
+
+[2026-02-20 16:41:13] STATUS=failed-mail TO=suportealugatorres@gmail.com SUBJECT=Novo utilizador registado
+<p>Um novo utilizador acabou de registar-se:</p><p><strong>Nome:</strong> Thiago da Silva<br><strong>Email:</strong> thiagosilvauh@gmail.com<br><strong>Tipo:</strong> arrendatario</p>
+
+[2026-02-21 05:12:33] STATUS=failed-mail TO=thiagosilvauh@gmail.com SUBJECT=Bem-vindo ao AlugaTorres
+<p>Olá Thiago da Silva,</p><p>Obrigado por se registar no AlugaTorres. Agora pode pesquisar e reservar casas em Torres Novas.</p><p>Se tiver dúvidas, responda a este email.</p><p>Boas reservas!<br>Equipe AlugaTorres</p>
+
+[2026-02-21 05:12:35] STATUS=failed-mail TO=suportealugatorres@gmail.com SUBJECT=Novo utilizador registado
+<p>Um novo utilizador acabou de registar-se:</p><p><strong>Nome:</strong> Thiago da Silva<br><strong>Email:</strong> thiagosilvauh@gmail.com<br><strong>Tipo:</strong> arrendatario</p>
+
+[2026-02-21 05:13:13] STATUS=failed-mail TO=thiagosilvauha@gmail.com SUBJECT=Bem-vindo ao AlugaTorres
+<p>Olá Thiago da Silva,</p><p>Obrigado por se registar no AlugaTorres. Agora pode pesquisar e reservar casas em Torres Novas.</p><p>Se tiver dúvidas, responda a este email.</p><p>Boas reservas!<br>Equipe AlugaTorres</p>
+
+[2026-02-21 05:13:15] STATUS=failed-mail TO=suportealugatorres@gmail.com SUBJECT=Novo utilizador registado
+<p>Um novo utilizador acabou de registar-se:</p><p><strong>Nome:</strong> Thiago da Silva<br><strong>Email:</strong> thiagosilvauha@gmail.com<br><strong>Tipo:</strong> proprietario</p>
+
+[2026-02-21 05:15:31] STATUS=failed-mail TO=thiagosilvauh@gmail.com SUBJECT=Reserva confirmada: Alecrim
+<p>Olá Thiago da Silva,</p><p>Sua reserva na propriedade <strong>Alecrim</strong> foi confirmada.</p><p><strong>Detalhes:</strong><br>Check-in: 2026-02-23<br>Check-out: 2026-02-26<br>Hóspedes: 2<br>Total: 102,00€</p><p>ID da reserva: 1</p><p>Obrigado por usar o AlugaTorres.</p>
+
+[2026-02-21 05:15:33] STATUS=failed-mail TO=thiagosilvauha@gmail.com SUBJECT=Nova reserva para sua propriedade: Alecrim
+<p>Olá Thiago da Silva,</p><p>Foi criada uma nova reserva para a sua propriedade <strong>Alecrim</strong>.</p><p><strong>Detalhes:</strong><br>Arrendatário: Thiago da Silva (thiagosilvauh@gmail.com)<br>Check-in: 2026-02-23<br>Check-out: 2026-02-26<br>Hóspedes: 2<br>Total: 102,00€</p><p>ID da reserva: 1</p>
+
+[2026-02-21 15:59:27] STATUS=failed-smtp TO=suportealugatorres@gmail.com SUBJECT=Teste SMTP - AlugaTorres
+<p>Este é um email de teste do sistema AlugaTorres.</p><p>Se recebeu este email, o SMTP está a funcionar!</p>
+
+[2026-02-21 16:00:28] STATUS=failed-smtp TO=suportealugatorres@gmail.com SUBJECT=Teste SMTP - AlugaTorres
+<p>Este é um email de teste do sistema AlugaTorres.</p><p>Se recebeu este email, o SMTP está a funcionar!</p>
+
+[2026-02-21 16:00:56] STATUS=failed-smtp TO=suportealugatorres@gmail.com SUBJECT=Teste SMTP - AlugaTorres
+<p>Este é um email de teste do sistema AlugaTorres.</p><p>Se recebeu este email, o SMTP está a funcionar!</p>
+
+[2026-02-21 16:02:23] STATUS=sent-smtp TO=suportealugatorres@gmail.com SUBJECT=Teste SMTP - AlugaTorres
+<p>Este é um email de teste do sistema AlugaTorres.</p><p>Se recebeu este email, o SMTP está a funcionar!</p>
+
+[2026-02-21 16:12:24] STATUS=sent-smtp TO=thiagosilvauha@gmail.com SUBJECT=Inscrição na Newsletter - AlugaTorres
+<p>Olá,</p><p>Obrigado por subscrever a newsletter do AlugaTorres. Em breve receberá novidades e ofertas.</p><p>Obrigado,<br>Equipa AlugaTorres</p>
+
+[2026-02-21 16:12:25] STATUS=sent-smtp TO=alugatorrespt@gmail.com SUBJECT=Nova subscrição na newsletter
+<p>Novo subscritor: thiagosilvauha@gmail.com</p>
+
+[2026-02-21 16:13:12] STATUS=sent-smtp TO=thiagosilvauha@gmail.com SUBJECT=Recebemos a sua mensagem - AlugaTorres
+<p>Olá Thiago,</p><p>Recebemos a sua mensagem com o assunto <strong>aacvf</strong>. Vamos responder o mais rápido possível.</p><p>Resumo da mensagem:<br>aaadqeeecca</p><p>Obrigado,<br>Equipe AlugaTorres</p>
+
+[2026-02-21 16:13:13] STATUS=sent-smtp TO=suportealugatorres@gmail.com SUBJECT=Novo contacto recebido
+<p>Foi recebida uma nova mensagem de contacto:</p><p><strong>Nome:</strong> Thiago<br><strong>Email:</strong> thiagosilvauha@gmail.com<br><strong>Assunto:</strong> aacvf</p><p><strong>Mensagem:</strong><br>aaadqeeecca</p>
+
+[2026-02-21 16:21:08] STATUS=sent-smtp TO=thiagosilvauha@gmail.com SUBJECT=Recebemos a sua mensagem - AlugaTorres
+<p>Olá Thiago,</p><p>Recebemos a sua mensagem com o assunto <strong>casd</strong>. Vamos responder o mais rápido possível.</p><p>Resumo da mensagem:<br>jjjyuf</p><p>Obrigado,<br>Equipe AlugaTorres</p>
+
+[2026-02-21 16:21:09] STATUS=sent-smtp TO=suportealugatorres@gmail.com SUBJECT=Novo contacto recebido
+<p>Foi recebida uma nova mensagem de contacto:</p><p><strong>Nome:</strong> Thiago<br><strong>Email:</strong> thiagosilvauha@gmail.com<br><strong>Assunto:</strong> casd</p><p><strong>Mensagem:</strong><br>jjjyuf</p>
+
+[2026-02-21 16:21:21] STATUS=sent-smtp TO=thiagosilvauha@gmail.com SUBJECT=Inscrição na Newsletter - AlugaTorres
+<p>Olá,</p><p>Obrigado por subscrever a newsletter do AlugaTorres. Em breve receberá novidades e ofertas.</p><p>Obrigado,<br>Equipa AlugaTorres</p>
+
+[2026-02-21 16:21:22] STATUS=sent-smtp TO=alugatorrespt@gmail.com SUBJECT=Nova subscrição na newsletter
+<p>Novo subscritor: thiagosilvauha@gmail.com</p>
+

@@ -31,16 +31,6 @@ if (!isset($_GET['refreshed'])) {
     <!-- Sistema de Notificações Toast -->
     <script src="<?= $BASE_URL ?>js/notifications.js"></script>
 
-    <script>
-        // Verificar se o sistema de notificações carregou corretamente
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof AlugaTorresNotifications === 'undefined') {
-                console.error('[AlugaTorres] ERRO: Sistema de notificações não carregou!');
-            } else {
-                console.log('[AlugaTorres] Sistema de notificações pronto');
-            }
-        });
-    </script>
 </head>
 
 

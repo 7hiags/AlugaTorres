@@ -65,7 +65,7 @@ if ($tipo_utilizador === 'proprietario') {
     $query_total_gasto->execute();
     $total_gasto = $query_total_gasto->get_result()->fetch_assoc()['total_gasto'] ?? 0;
 
-    $query_proximas = $conn->prepare("SELECT r.*, c.titulo as casa_titulo FROM reservas r JOIN casas c ON r.casa_id = c.id WHERE r.arrendatario_id = ? AND r.data_checkin >= CURDATE() ORDER BY r.data_checkin LIMIT 3");
+    $query_proximas = $conn->prepare("SELECT r.*, c.titulo as casa_titulo FROM reservas r JOIN casas c ON r.casa_id = c.id WHERE r.arrendatario_id = ? AND r.data_checkin >= CURDATE() AND r.status IN ('pendente', 'confirmada') ORDER BY r.data_checkin LIMIT 3");
     $query_proximas->bind_param("i", $user_id);
     $query_proximas->execute();
     $proximas_reservas = $query_proximas->get_result();

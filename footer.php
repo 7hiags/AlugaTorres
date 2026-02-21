@@ -55,7 +55,3 @@ if (session_status() === PHP_SESSION_NONE) {
         <p>&copy; <span id="ano"></span> AlugaTorres. Todos os direitos reservados.</p>
     </div>
 </footer>
-
-<script>
-    document.getElementById("ano").textContent = new Date().getFullYear();
-</script>

@@ -77,21 +77,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
       $userEmailResult = sendEmail($email, $subjectUser, $bodyUser);
 
-      // Enviar email de aviso para admin
-      $adminEmail = getAdminEmail() ?: 'suportealugatorres@gmail.com';
-      $subjectAdmin = 'Novo contacto recebido';
-      $bodyAdmin = "<p>Foi recebida uma nova mensagem de contacto:</p>" .
+      // Enviar email de aviso para suporte (email visível na página de contactos)
+      $supportEmail = getSupportEmail();
+      $subjectSupport = 'Novo contacto recebido';
+      $bodySupport = "<p>Foi recebida uma nova mensagem de contacto:</p>" .
         "<p><strong>Nome:</strong> " . htmlspecialchars($nome) . "<br>" .
         "<strong>Email:</strong> " . htmlspecialchars($email) . "<br>" .
         "<strong>Assunto:</strong> " . htmlspecialchars($assunto) . "</p>" .
         "<p><strong>Mensagem:</strong><br>" . nl2br(htmlspecialchars($mensagem)) . "</p>";
 
-      $adminEmailResult = sendEmail($adminEmail, $subjectAdmin, $bodyAdmin);
+      $supportEmailResult = sendEmail($supportEmail, $subjectSupport, $bodySupport);
 
       echo json_encode([
         'status' => 'success',
         'message' => 'Mensagem enviada com sucesso!',
-        'emails' => ['user' => $userEmailResult, 'admin' => $adminEmailResult]
+        'emails' => ['user' => $userEmailResult, 'support' => $supportEmailResult]
       ]);
     } else {
       throw new \Exception('Falha ao inserir no banco de dados');
