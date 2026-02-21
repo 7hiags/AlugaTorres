@@ -113,7 +113,7 @@ function createReservation()
         return;
     }
 
-    // Verificar se o usuário não é o proprietário
+    // Verificar se o utilizador não é o proprietário
     if ($casa['proprietario_id'] == $user_id) {
         echo json_encode(['error' => 'Não pode reservar sua própria casa']);
         return;
@@ -135,8 +135,6 @@ function createReservation()
     // Usar valores detalhados do preco_info para corresponder à estrutura da BD
     $stmt = $conn->prepare("INSERT INTO reservas (casa_id, arrendatario_id, data_checkin, data_checkout, noites, total_hospedes, preco_noite, subtotal, taxa_limpeza, taxa_seguranca, total, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmada')");
     $stmt->bind_param("iissiiddddd", $casa_id, $user_id, $checkin, $checkout, $preco_info['noites'], $hospedes, $preco_info['preco_noite'], $preco_info['subtotal'], $preco_info['taxa_limpeza'], $preco_info['taxa_seguranca'], $preco_info['total']);
-
-
 
 
     if (!$stmt->execute()) {

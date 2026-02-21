@@ -1,19 +1,6 @@
 <?php
 
-/**
- * ========================================
- * Página de Login - AlugaTorres
- * ========================================
- * Este arquivo processa a autenticação de utilizadores.
- * Verifica as credenciais e cria a sessão do utilizador.
- * 
- * @author AlugaTorres
- * @version 1.0
- */
-
-// ============================================
 // Inclusão de Arquivos Necessários
-// ============================================
 
 // Carrega o arquivo de conexão com o banco de dados
 require_once 'db.php';
@@ -21,50 +8,33 @@ require_once 'db.php';
 // Carrega o helper de notificações
 require_once 'notifications_helper.php';
 
-// ============================================
 // Inicialização da Sessão
-// ============================================
-
 session_start();
 
-// ============================================
 // Processamento do Formulário de Login (POST)
-// ============================================
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   try {
-    // ------------------------------------------
     // Validação de Campos Obrigatórios
-    // ------------------------------------------
     if (!isset($_POST['email']) || !isset($_POST['pass'])) {
       throw new \Exception("Campos de email e senha são obrigatórios");
     }
 
-    // ------------------------------------------
     // Captura e Limpeza dos Dados
-    // ------------------------------------------
     $email = trim($_POST['email']);
     $pass = trim($_POST['pass']);
 
-    // ------------------------------------------
     // Validação de Dados Vazios
-    // ------------------------------------------
     if (empty($email) || empty($pass)) {
       throw new \Exception("Email e senha não podem estar vazios");
     }
 
-    // ------------------------------------------
     // Verificação de Conexão com BD
-    // ------------------------------------------
     if (!$conn) {
       throw new \Exception("Erro na conexão com o banco de dados");
     }
 
-    // ------------------------------------------
-    // Consulta Preparada - Buscar Utilizador
-    // ------------------------------------------
-    // Previne SQL Injection usando prepared statements
+    // Consulta Preparada - Procura o utilizador e previne SQL Injection usando prepared statements
     $stmt = $conn->prepare("SELECT id, utilizador, palavrapasse_hash, tipo_utilizador, ativo FROM utilizadores WHERE email = ?");
 
     if (!$stmt) {
@@ -94,22 +64,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $stmt->bind_result($id, $user, $hash, $tipo_utilizador, $ativo);
       $stmt->fetch();
 
-      // ------------------------------------------
       // Verificação de Senha
-      // ------------------------------------------
       if (password_verify($pass, $hash)) {
 
-        // ------------------------------------------
         // Verificação de Conta Ativa
-        // ------------------------------------------
         // Verificar se o utilizador não está banido/suspenso
         if (isset($ativo) && $ativo == 0) {
           throw new \Exception("Conta suspensa. Contacte o administrador.");
         }
 
-        // ------------------------------------------
         // Criação da Sessão do Utilizador
-        // ------------------------------------------
         $_SESSION['user'] = $user;
         $_SESSION['email'] = $email;
         $_SESSION['user_id'] = $id;
@@ -121,9 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Notificação de sucesso no login
         notifySuccess('Bem-vindo de volta, ' . htmlspecialchars($user) . '! Login realizado com sucesso.');
 
-        // ------------------------------------------
         // Redirecionamento Conforme Tipo de Utilizador
-        // ------------------------------------------
         if ($tipo_utilizador === 'admin') {
           // Administradores vão para o painel admin
           header("Location: ../admin/index.php");
@@ -141,9 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       throw new \Exception("Email não encontrado");
     }
 
-    // ============================================
     // Tratamento de Exceções
-    // ============================================  
   } catch (\Exception $e) {
     // Usar sistema de notificações toast - mostrar motivo específico do erro
     notifyError('Erro no login: ' . $e->getMessage());
@@ -157,31 +117,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="pt">
 
 <head>
-  <!-- ========================================
-       Meta Tags e Configurações
-       ======================================== -->
+  <!-- Meta Tags e Configurações -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AlugaTorres | Login</title>
 
-  <!-- ========================================
-       Folhas de Estilo (CSS)
-       ======================================== -->
+  <!-- Folhas de Estilo (CSS) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link rel="stylesheet" href="../style/style.css">
   <link rel="website icon" type="png" href="../style/img/Logo_AlugaTorres_branco.png">
 </head>
 
 <body>
-  <!-- ========================================
-       Inclusão de Componentes
-       ======================================== -->
+  <!-- Inclusão de Componentes -->
   <?php include '../header.php'; ?>
   <?php include '../sidebar.php'; ?>
 
-  <!-- ========================================
-       Seção de Formulário de Login
-       ======================================== -->
+  <!-- Seção de Formulário de Login -->
   <section class="login">
     <h2><i class="fas fa-user"></i> Login</h2>
 
@@ -217,19 +169,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </form>
   </section>
 
-  <!-- ========================================
-       Rodapé da Página
-       ======================================== -->
+  <!-- Rodapé da Página -->
   <?php include '../footer.php'; ?>
 
-  <!-- ========================================
-       Scripts JavaScript
-       ======================================== -->
+  <!-- Scripts JavaScript -->
   <script src="../js/script.js"></script>
 
-  <!-- ========================================
-       Script para Controle da Sidebar
-       ======================================== -->
+  <!-- Script para Controle da Sidebar -->
   <script>
     document.addEventListener("DOMContentLoaded", function() {
       // Elementos do DOM

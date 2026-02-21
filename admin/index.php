@@ -25,9 +25,7 @@ require_once __DIR__ . '/../backend/check_admin.php';
 
 $stats = [];
 
-// ------------------------------------------
 // Estatísticas de Utilizadores
-// ------------------------------------------
 
 // Total de utilizadores
 $result = $conn->query("SELECT COUNT(*) as total FROM utilizadores");
@@ -45,9 +43,7 @@ $stats['total_arrendatarios'] = $result->fetch_assoc()['total'];
 $result = $conn->query("SELECT COUNT(*) as total FROM utilizadores WHERE MONTH(data_registro) = MONTH(CURRENT_DATE()) AND YEAR(data_registro) = YEAR(CURRENT_DATE())");
 $stats['novos_utilizadores_mes'] = $result->fetch_assoc()['total'];
 
-// ------------------------------------------
 // Estatísticas de Casas
-// ------------------------------------------
 
 // Total de casas
 $result = $conn->query("SELECT COUNT(*) as total FROM casas");
@@ -61,9 +57,7 @@ $stats['casas_disponiveis'] = $result->fetch_assoc()['total'];
 $result = $conn->query("SELECT COUNT(*) as total FROM casas WHERE destaque = 1");
 $stats['casas_destaque'] = $result->fetch_assoc()['total'];
 
-// ------------------------------------------
 // Estatísticas de Reservas
-// ------------------------------------------
 
 // Total de reservas
 $result = $conn->query("SELECT COUNT(*) as total FROM reservas");
@@ -237,14 +231,10 @@ logAdminActivity('Acesso ao Dashboard', 'Visualização do painel administrativo
             </div>
         </div>
 
-        <!-- ========================================
-             Grid de Conteúdo Admin
-             ======================================== -->
+        <!-- Grid de Conteúdo Admin -->
         <div class="admin-content-grid">
 
-            <!-- ========================================
-                 Gráfico de Reservas por Estado
-                 ======================================== -->
+            <!-- Gráfico de Reservas por Estado -->
             <div class="admin-card">
                 <h3><i class="fas fa-chart-bar"></i> Reservas por Estado</h3>
                 <div class="chart-container">
