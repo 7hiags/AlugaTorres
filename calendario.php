@@ -632,7 +632,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 weatherCurrent.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <div class="weather-temp">${Math.round(hoje.temperatura_maxima || hoje.temperatura_atual || 0)}°C</div>
+                            <div class="weather-temp">${Math.round(hoje.temperatura_atual || hoje.temperatura_media || hoje.temperatura_maxima || 0)}°C</div>
                             <div class="weather-desc">
                                 <img src="${hoje.icone || ''}" alt="${hoje.descricao_pt || hoje.descricao || ''}" style="width: 70px; height: 70px;">
                                 ${hoje.descricao_pt || hoje.descricao || ''}
@@ -655,9 +655,11 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     const key = (day.data || '').split('T')[0];
                     if (!key) return;
                     weatherData[key] = {
-                        temp: day.temperatura_maxima || day.temperatura_atual || 0,
+                        temp: day.temperatura_atual || day.temperatura_media || day.temperatura_maxima || 0,
+                        temp_atual: day.temperatura_atual || null,
                         temp_min: day.temperatura_minima || 0,
                         temp_max: day.temperatura_maxima || 0,
+                        temp_media: day.temperatura_media || null,
                         desc: day.descricao_pt || day.descricao || '',
                         icon: day.icone || '',
                         humidity: day.humidade_media || 0,
@@ -700,8 +702,8 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     statusEl.className = 'weather-source weather-source-warning';
                 }
 
-                // Fallback para Open-Meteo (incluindo dados horários para humidade)
-                const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=39.4811&longitude=-8.5394&daily=temperature_2m_max,temperature_2m_min,weathercode,windspeed_10m_max&hourly=relative_humidity_2m&forecast_days=16&timezone=Europe/Lisbon');
+                // Fallback para Open-Meteo (incluindo dados atuais e horários para humidade)
+                const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=39.4811&longitude=-8.5394&current=temperature_2m&daily=temperature_2m_max,temperature_2m_min,weathercode,windspeed_10m_max&hourly=relative_humidity_2m&forecast_days=16&timezone=Europe/Lisbon');
                 if (!response.ok) throw new Error('Erro ao carregar meteorologia');
 
 
@@ -1257,6 +1259,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             const datas = apiData.daily.time;
             const tempMax = apiData.daily.temperature_2m_max;
             const tempMin = apiData.daily.temperature_2m_min;
+            const currentTemp = apiData.current ? apiData.current.temperature_2m : null;
             const weatherCodes = apiData.daily.weathercode;
             const windSpeed = apiData.daily.windspeed_10m_max;
 
@@ -1314,6 +1317,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     'humidade_media': humidadeMedia,
                     'vento_medio': windSpeed[i],
                     'hoje': dataStr === hoje,
+                    'temperatura_atual': dataStr === hoje && currentTemp ? currentTemp : null,
                     'numero_previsoes': 1
                 };
                 resultado.push(diaInfo);
@@ -1356,7 +1360,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             weatherCurrent.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <div class="weather-temp">${Math.round(day.temp_max || day.temp)}°C</div>
+                        <div class="weather-temp">${Math.round(day.temp_atual || day.temp_media || day.temp)}°C</div>
                         <div class="weather-desc">
                             <img src="${day.icon || ''}" alt="${day.desc || ''}" style="width: 70px; height: 70px;">
                             ${day.desc || ''}
@@ -1593,5 +1597,6 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
         }
     </script>
 </body>
+
 
 </html>
