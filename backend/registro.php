@@ -21,6 +21,7 @@ if (!in_array($tipo_utilizador, $tipos_permitidos)) {
     $tipo_utilizador = 'arrendatario';
 }
 
+// Processa o formulário de registo
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = trim($_POST['user']);
     $email = trim($_POST['email']);
@@ -52,7 +53,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         notifyError("A palavra-passe deve ter pelo menos 8 caracteres!");
         header("Location: registro.php?tipo_utilizador=$tipo");
         exit;
+    } elseif (!empty($nif) && (!preg_match('/^[0-9]+$/', $nif) || strlen($nif) !== 9)) {
+        notifyError("O NIF deve conter exatamente 9 dígitos numéricos!");
+        header("Location: registro.php?tipo_utilizador=$tipo");
+        exit;
     } else {
+
         // Verifica se o email já existe
         $check = $conn->prepare("SELECT id FROM utilizadores WHERE email = ?");
         $check->bind_param("s", $email);
@@ -197,9 +203,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php if ($tipo_utilizador === 'proprietario'): ?>
                 <div class="form-group">
                     <label><i class="fas fa-id-card"></i>NIF (Opcional)</label>
-                    <input type="text" name="nif" placeholder="Seu NIF para faturação"
+                    <input type="text" name="nif" placeholder="9 dígitos numéricos" maxlength="9" pattern="[0-9]{9}"
                         value="<?php echo isset($_POST['nif']) ? htmlspecialchars($_POST['nif']) : ''; ?>">
                 </div>
+
             <?php endif; ?>
 
             <div class="form-row">

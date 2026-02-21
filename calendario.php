@@ -71,7 +71,71 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="website icon" type="png" href="style/img/Logo_AlugaTorres_branco.png">
+    <style>
+        /* Estilos do weatherCurrent para dia/noite */
+        .weather-current {
+            transition: all 0.5s ease;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        /* Tema Diurno - Cores claras/quentes */
+        .weather-current-day {
+            background: linear-gradient(135deg, #87CEEB 0%, #E0F6FF 100%) !important;
+            color: #1a3a5c !important;
+        }
+
+        .weather-current-day .weather-temp {
+            color: #1a3a5c !important;
+        }
+
+        .weather-current-day .weather-desc {
+            color: #2c5282 !important;
+        }
+
+        .weather-current-day .weather-details {
+            color: #1a3a5c !important;
+            background: rgba(255, 255, 255, 0.6) !important;
+        }
+
+        /* Tema Noturno - Cores escuras/frias */
+        .weather-current-night {
+            background: linear-gradient(135deg, #191970 0%, #2F4F4F 100%) !important;
+            color: #ffffff !important;
+        }
+
+        .weather-current-night .weather-temp {
+            color: #ffffff !important;
+        }
+
+        .weather-current-night .weather-desc {
+            color: #e2e8f0 !important;
+        }
+
+        .weather-current-night .weather-desc img {
+            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+        }
+
+        .weather-current-night .weather-details {
+            color: #ffffff !important;
+            background: rgba(255, 255, 255, 0.15) !important;
+        }
+
+        /* Todos os ícones Font Awesome no modo noturno */
+        .weather-current-night i,
+        .weather-current-night .weather-details i {
+            color: #63b3ed !important;
+        }
+
+        /* Ícone de calendário na data também muda */
+        .weather-current-night~.weather-date i,
+        .weather-widget:has(.weather-current-night) .weather-date i {
+            color: #63b3ed !important;
+        }
+    </style>
+
 </head>
+
 
 <body>
     <?php include 'header.php'; ?>
@@ -612,8 +676,13 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
 
                     const json = await res.json();
                     if (json && Array.isArray(json.previsao) && json.previsao.length > 0) {
-                        return json.previsao;
+                        return {
+                            previsao: json.previsao,
+                            isDia: json.is_dia !== undefined ? json.is_dia : true,
+                            coresWidget: json.cores_widget || null
+                        };
                     }
+
                 } catch (e) {
                     console.warn('Local weather API not available:', e.message || e);
                 }
@@ -621,20 +690,30 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
             }
 
             // Normaliza e popula os widgets a partir de um array de dias (cada dia com keys: data, dia_semana_pt, temperatura_minima, temperatura_maxima, descricao_pt, icone, vento_medio, humidade_media, hoje)
-            function setWeatherFromPrevisao(previsao) {
+            function setWeatherFromPrevisao(previsao, isDia = true, coresWidget = null) {
                 if (!previsao || previsao.length === 0) {
                     throw new Error('Previsão vazia');
                 }
 
-
                 const hoje = previsao.find(d => d.hoje) || previsao[0];
+
+                // Aplicar tema dia/noite ao weatherCurrent
+                if (weatherCurrent) {
+                    weatherCurrent.classList.remove('weather-current-day', 'weather-current-night');
+                    weatherCurrent.classList.add(isDia ? 'weather-current-day' : 'weather-current-night');
+                }
+
+
+
+                // Usar ícone dia ou noite conforme período
+                const iconeUrl = isDia ? (hoje.icone_dia || hoje.icone) : (hoje.icone_noite || hoje.icone);
 
                 weatherCurrent.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <div class="weather-temp">${Math.round(hoje.temperatura_atual || hoje.temperatura_media || hoje.temperatura_maxima || 0)}°C</div>
                             <div class="weather-desc">
-                                <img src="${hoje.icone || ''}" alt="${hoje.descricao_pt || hoje.descricao || ''}" style="width: 70px; height: 70px;">
+                                <img src="${iconeUrl || ''}" alt="${hoje.descricao_pt || hoje.descricao || ''}" style="width: 70px; height: 70px;">
                                 ${hoje.descricao_pt || hoje.descricao || ''}
                             </div>
                             <div>${hoje.dia_semana_pt || hoje.dia_semana || ''} • Torres Novas</div>
@@ -650,6 +729,7 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     </div>
                 `;
 
+
                 // Armazenar dados para o calendário (usar chaves ISO YYYY-MM-DD)
                 previsao.forEach(day => {
                     const key = (day.data || '').split('T')[0];
@@ -662,10 +742,14 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                         temp_media: day.temperatura_media || null,
                         desc: day.descricao_pt || day.descricao || '',
                         icon: day.icone || '',
+                        icone_dia: day.icone_dia || day.icone || '',
+                        icone_noite: day.icone_noite || day.icone || '',
                         humidity: day.humidade_media || 0,
                         wind: day.vento_medio || day.vento || 0
                     };
                 });
+
+
 
                 // Regenerar calendário para incluir meteorologia real
                 generateCalendar(currentMonth, currentYear);
@@ -686,15 +770,16 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 }
 
                 // Tentar API local
-                const localPrevisao = await tryLocal();
-                if (localPrevisao) {
+                const localData = await tryLocal();
+                if (localData) {
                     if (statusEl) {
                         statusEl.textContent = 'Fonte: API local';
                         statusEl.className = 'weather-source weather-source-success';
                     }
-                    setWeatherFromPrevisao(localPrevisao);
+                    setWeatherFromPrevisao(localData.previsao, localData.isDia, localData.coresWidget);
                     return;
                 }
+
 
                 // Indicar fallback
                 if (statusEl) {
@@ -715,7 +800,12 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     statusEl.className = 'weather-source weather-source-success';
                 }
 
-                setWeatherFromPrevisao(previsao);
+                // Determinar se é dia ou noite (6h às 18h = dia)
+                const horaAtual = new Date().getHours();
+                const isDia = horaAtual >= 6 && horaAtual < 18;
+
+                setWeatherFromPrevisao(previsao, isDia);
+
 
             } catch (error) {
                 console.error('Erro ao carregar meteorologia:', error);
@@ -1314,12 +1404,15 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     'descricao': weatherDesc,
                     'descricao_pt': weatherDesc,
                     'icone': `http://openweathermap.org/img/wn/${iconCode}@2x.png`,
+                    'icone_dia': `http://openweathermap.org/img/wn/${iconCode}@2x.png`,
+                    'icone_noite': `http://openweathermap.org/img/wn/${iconCode.replace('d', 'n')}@2x.png`,
                     'humidade_media': humidadeMedia,
                     'vento_medio': windSpeed[i],
                     'hoje': dataStr === hoje,
                     'temperatura_atual': dataStr === hoje && currentTemp ? currentTemp : null,
                     'numero_previsoes': 1
                 };
+
                 resultado.push(diaInfo);
             }
 
@@ -1342,8 +1435,13 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                     month: 'long',
                     day: 'numeric'
                 });
-                weatherDateEl.innerHTML = `<i class="fas fa-calendar-day" style="margin-right: 8px; color: #038e01;"></i>${dataFormatada}`;
+                // Ajustar cor do ícone conforme tema do weatherCurrent
+                const isNoite = weatherCurrent && weatherCurrent.classList.contains('weather-current-night');
+                const corIcone = isNoite ? '#63b3ed' : '#038e01';
+                weatherDateEl.innerHTML = `<i class="fas fa-calendar-day" style="margin-right: 8px; color: ${corIcone};"></i>${dataFormatada}`;
             }
+
+
 
 
             if (!day) {
@@ -1357,27 +1455,32 @@ $casa_id_url = $casa_id ? "&casa_id=$casa_id" : '';
                 return;
             }
 
-            weatherCurrent.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <div class="weather-temp">${Math.round(day.temp_atual || day.temp_media || day.temp)}°C</div>
-                        <div class="weather-desc">
-                            <img src="${day.icon || ''}" alt="${day.desc || ''}" style="width: 70px; height: 70px;">
-                            ${day.desc || ''}
-                        </div>
-                        <div>${new Date(dateStr).toLocaleDateString('pt-PT', { weekday: 'long' })} • Torres Novas</div>
+            // Determinar ícone baseado no período do dia
+            const isNoite = weatherCurrent && weatherCurrent.classList.contains('weather-current-night');
+            const iconeUrl = isNoite ? (day.icone_noite || day.icon) : (day.icone_dia || day.icon);
 
+
+            weatherCurrent.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div class="weather-temp">${Math.round(day.temp_atual || day.temp_media || day.temp)}°C</div>
+                            <div class="weather-desc">
+                                <img src="${iconeUrl || ''}" alt="${day.desc || ''}" style="width: 70px; height: 70px;">
+                                ${day.desc || ''}
+                            </div>
+                            <div>${new Date(dateStr).toLocaleDateString('pt-PT', { weekday: 'long' })} • Torres Novas</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div>Max: ${Math.round(day.temp_max || 0)}°C</div>
+                            <div>Min: ${Math.round(day.temp_min || 0)}°C</div>
+                        </div>
                     </div>
-                    <div style="text-align: right;">
-                        <div>Max: ${Math.round(day.temp_max || 0)}°C</div>
-                        <div>Min: ${Math.round(day.temp_min || 0)}°C</div>
+                    <div class="weather-details">
+                        <div><i class="fas fa-wind"></i> Vento: ${Math.round(day.wind || 0)} km/h</div>
+                        <div><i class="fas fa-tint"></i> Humidade: ${Math.round(day.humidity || 0)}%</div>
                     </div>
-                </div>
-                <div class="weather-details">
-                    <div><i class="fas fa-wind"></i> Vento: ${Math.round(day.wind || 0)} km/h</div>
-                    <div><i class="fas fa-tint"></i> Humidade: ${Math.round(day.humidity || 0)}%</div>
-                </div>
-            `;
+                `;
+
 
             // Se esse dia estiver selecionado no calendário, garantir que a sidebar está atualizada
             if (selectedDate === key) {

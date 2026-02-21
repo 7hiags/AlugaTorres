@@ -143,27 +143,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $morada = trim($_POST['morada']);
         $nif = trim($_POST['nif']);
 
-        $stmt = $conn->prepare("UPDATE utilizadores SET utilizador = ?, telefone = ?, morada = ?, nif = ? WHERE id = ?");
-        $stmt->bind_param("ssssi", $novo_nome, $telefone, $morada, $nif, $user_id);
-
-        if ($stmt->execute()) {
-            // Atualiza o nome na sessão
-            $_SESSION['user'] = $novo_nome;
-            $success = 'Perfil atualizado com sucesso!';
-
-            // Atualiza os dados locais
-            $user_data['utilizador'] = $novo_nome;
-            $user_data['telefone'] = $telefone;
-            $user_data['morada'] = $morada;
-            $user_data['nif'] = $nif;
+        // Validação do NIF
+        if (!empty($nif) && (!preg_match('/^[0-9]+$/', $nif) || strlen($nif) !== 9)) {
+            $error = 'O NIF deve conter exatamente 9 dígitos numéricos!';
         } else {
-            $error = 'Erro ao atualizar perfil: ' . $conn->error;
-        }
+            $stmt = $conn->prepare("UPDATE utilizadores SET utilizador = ?, telefone = ?, morada = ?, nif = ? WHERE id = ?");
+            $stmt->bind_param("ssssi", $novo_nome, $telefone, $morada, $nif, $user_id);
 
+            if ($stmt->execute()) {
+                // Atualiza o nome na sessão
+                $_SESSION['user'] = $novo_nome;
+                $success = 'Perfil atualizado com sucesso!';
+
+                // Atualiza os dados locais
+                $user_data['utilizador'] = $novo_nome;
+                $user_data['telefone'] = $telefone;
+                $user_data['morada'] = $morada;
+                $user_data['nif'] = $nif;
+            } else {
+                $error = 'Erro ao atualizar perfil: ' . $conn->error;
+            }
+        }
+    } elseif ($action === 'change_password') {
         // ------------------------------------------
         // Alteração de Senha
         // ------------------------------------------
-    } elseif ($action === 'change_password') {
         $senha_atual = $_POST['senha_atual'];
         $nova_senha = $_POST['nova_senha'];
         $confirmar_senha = $_POST['confirmar_senha'];
@@ -378,10 +382,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <?php if ($tipo_utilizador === 'proprietario'): ?>
                                 <div class="form-group">
                                     <label class="form-label">NIF</label>
-                                    <input type="text" name="nif" class="form-input"
+                                    <input type="text" name="nif" class="form-input" placeholder="9 dígitos numéricos" maxlength="9" pattern="[0-9]{9}"
                                         value="<?php echo htmlspecialchars($user_data['nif'] ?? ''); ?>">
                                 </div>
                             <?php endif; ?>
+
                         </div>
 
                         <div class="form-group">
