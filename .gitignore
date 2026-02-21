@@ -1,0 +1,21 @@
+# Ficheiros de configuração sensíveis
+backend/.env
+.env
+
+# Ficheiros de log
+*.log
+backend/*.log
+backend/email_log.txt
+
+# Base de dados SQLite
+*.sqlite
+*.db
+backend/.cache.sqlite
+
+# Ficheiros de sistema
+.DS_Store
+Thumbs.db
+
+# Uploads
+uploads/casas/*
+!uploads/casas/.gitkeep
