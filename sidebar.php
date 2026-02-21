@@ -73,7 +73,6 @@ if (session_status() === PHP_SESSION_NONE) {
             <?php endif; ?>
 
             <?php if (isset($_SESSION['tipo_utilizador']) && $_SESSION['tipo_utilizador'] === 'admin'): ?>
-                <div class="sidebar-divider"></div>
                 <h4 class="sidebar-section-title"><i class="fas fa-shield-alt"></i> Administração</h4>
 
                 <a href="<?= $BASE_URL ?>admin/index.php" class="sidebar-item admin-item">
@@ -84,9 +83,6 @@ if (session_status() === PHP_SESSION_NONE) {
                 </a>
                 <a href="<?= $BASE_URL ?>admin/casas.php" class="sidebar-item admin-item">
                     <i class="fas fa-home"></i> Gerir Casas
-                </a>
-                <a href="<?= $BASE_URL ?>admin/configuracoes.php" class="sidebar-item admin-item">
-                    <i class="fas fa-cogs"></i> Configurações
                 </a>
                 <a href="<?= $BASE_URL ?>admin/logs.php" class="sidebar-item admin-item">
                     <i class="fas fa-history"></i> Logs de Atividade

@@ -442,43 +442,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <script src="../js/script.js"></script>
 
-    <script>
-        // Mostrar/ocultar campo "outro" tipo de propriedade
-        document.querySelector('select[name="tipo_propriedade"]').addEventListener('change', function() {
-            const campoOutro = document.getElementById('campo-outro');
-            if (this.value === 'outro') {
-                campoOutro.style.display = 'block';
-            } else {
-                campoOutro.style.display = 'none';
-            }
-        });
-
-        document.addEventListener('DOMContentLoaded', function() {
-
-            // Função para combinar hora e minuto nos campos hidden
-            function updateTimeFields() {
-                // Check-in
-                const checkinHora = document.querySelector('select[name="hora_checkin_hora"]').value;
-                const checkinMinuto = document.querySelector('select[name="hora_checkin_minuto"]').value;
-                const checkinHidden = document.getElementById('hora_checkin_hidden');
-                checkinHidden.value = checkinHora.padStart(2, '0') + ':' + checkinMinuto;
-
-                // Check-out
-                const checkoutHora = document.querySelector('select[name="hora_checkout_hora"]').value;
-                const checkoutMinuto = document.querySelector('select[name="hora_checkout_minuto"]').value;
-                const checkoutHidden = document.getElementById('hora_checkout_hidden');
-                checkoutHidden.value = checkoutHora.padStart(2, '0') + ':' + checkoutMinuto;
-            }
-
-            // Adicionar event listeners aos selects de hora
-            document.querySelectorAll('select[name*="hora_checkin"], select[name*="hora_checkout"]').forEach(select => {
-                select.addEventListener('change', updateTimeFields);
-            });
-
-            // Inicializar valores
-            updateTimeFields();
-        });
-    </script>
 </body>
 
 </html>

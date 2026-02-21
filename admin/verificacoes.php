@@ -168,16 +168,7 @@ logAdminActivity('Acesso às Verificações Pendentes');
     <?php include '../footer.php'; ?>
 
     <script src="../js/script.js"></script>
-    <script>
-        function mostrarRejeicao(id) {
-            document.getElementById('rejeitarCasaId').value = id;
-            document.getElementById('modalRejeicao').classList.add('active');
-        }
 
-        function fecharModal() {
-            document.getElementById('modalRejeicao').classList.remove('active');
-        }
-    </script>
 </body>
 
 </html>
