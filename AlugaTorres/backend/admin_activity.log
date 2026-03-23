@@ -1,0 +1,111 @@
+[2026-03-15 20:10:24] Admin ID: 1 | Ação: Acesso ao Dashboard | Detalhes: Visualização do painel administrativo | IP: ::1
+[2026-03-15 20:10:30] Admin ID: 1 | Ação: Acesso ao Dashboard | Detalhes: Visualização do painel administrativo | IP: ::1
+[2026-03-15 20:10:33] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:13:42] Admin ID: 1 | Ação: Acesso ao Dashboard | Detalhes: Visualização do painel administrativo | IP: ::1
+[2026-03-15 20:13:46] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:14:26] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-15 20:14:42] Admin ID: 1 | Ação: Eliminar Casa | Detalhes: ID: 9 | IP: ::1
+[2026-03-15 20:14:42] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-15 20:18:49] Admin ID: 1 | Ação: Eliminar Casa | Detalhes: ID: 9 | IP: ::1
+[2026-03-15 20:18:49] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-15 20:21:08] Admin ID: 1 | Ação: Eliminar Casa | Detalhes: ID: 9 | IP: ::1
+[2026-03-15 20:21:08] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-15 20:23:08] Admin ID: 1 | Ação: Eliminar Casa | Detalhes: ID: 9 | IP: ::1
+[2026-03-15 20:23:08] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-15 20:25:30] Admin ID: 1 | Ação: Eliminar Casa | Detalhes: ID: 9 | IP: ::1
+[2026-03-15 20:25:30] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-15 20:27:33] Admin ID: 1 | Ação: Acesso ao Dashboard | Detalhes: Visualização do painel administrativo | IP: ::1
+[2026-03-15 20:27:37] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-15 20:27:39] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-15 20:28:48] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-15 20:29:21] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-15 20:30:01] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:30:13] Admin ID: 1 | Ação: Banir Utilizador | Detalhes: ID: 2 | IP: ::1
+[2026-03-15 20:30:13] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:35:49] Admin ID: 1 | Ação: Acesso ao Dashboard | Detalhes: Visualização do painel administrativo | IP: ::1
+[2026-03-15 20:35:58] Admin ID: 1 | Ação: Acesso ao Dashboard | Detalhes: Visualização do painel administrativo | IP: ::1
+[2026-03-15 20:36:01] Admin ID: 1 | Ação: Acesso às Verificações Pendentes | Detalhes:  | IP: ::1
+[2026-03-15 20:37:20] Admin ID: 1 | Ação: Acesso às Verificações Pendentes | Detalhes:  | IP: ::1
+[2026-03-15 20:37:37] Admin ID: 1 | Ação: Acesso aos Logs | Detalhes:  | IP: ::1
+[2026-03-15 20:39:28] Admin ID: 1 | Ação: Acesso aos Logs | Detalhes:  | IP: ::1
+[2026-03-15 20:39:38] Admin ID: 1 | Ação: Acesso às Configurações | Detalhes:  | IP: ::1
+[2026-03-15 20:41:08] Admin ID: 1 | Ação: Atualizar Configurações | Detalhes: Email | IP: ::1
+[2026-03-15 20:41:08] Admin ID: 1 | Ação: Acesso às Configurações | Detalhes:  | IP: ::1
+[2026-03-15 20:41:15] Admin ID: 1 | Ação: Atualizar Configurações | Detalhes: Email | IP: ::1
+[2026-03-15 20:41:15] Admin ID: 1 | Ação: Acesso às Configurações | Detalhes:  | IP: ::1
+[2026-03-15 20:41:40] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:41:43] Admin ID: 1 | Ação: Desbanir Utilizador | Detalhes: ID: 2 | IP: ::1
+[2026-03-15 20:41:43] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:42:53] Admin ID: 1 | Ação: Desbanir Utilizador | Detalhes: ID: 2 | IP: ::1
+[2026-03-15 20:42:53] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:45:45] Admin ID: 1 | Ação: Desbanir Utilizador | Detalhes: ID: 2 | IP: ::1
+[2026-03-15 20:45:45] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:46:01] Admin ID: 1 | Ação: Acesso ao Dashboard | Detalhes: Visualização do painel administrativo | IP: ::1
+[2026-03-15 20:46:05] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:46:14] Admin ID: 1 | Ação: Banir Utilizador | Detalhes: ID: 3 | IP: ::1
+[2026-03-15 20:46:14] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:46:29] Admin ID: 1 | Ação: Desbanir Utilizador | Detalhes: ID: 3 | IP: ::1
+[2026-03-15 20:46:29] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:47:10] Admin ID: 1 | Ação: Desbanir Utilizador | Detalhes: ID: 3 | IP: ::1
+[2026-03-15 20:47:10] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:47:33] Admin ID: 1 | Ação: Desbanir Utilizador | Detalhes: ID: 3 | IP: ::1
+[2026-03-15 20:47:33] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:47:34] Admin ID: 1 | Ação: Desbanir Utilizador | Detalhes: ID: 3 | IP: ::1
+[2026-03-15 20:47:34] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:47:35] Admin ID: 1 | Ação: Desbanir Utilizador | Detalhes: ID: 3 | IP: ::1
+[2026-03-15 20:47:35] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:47:41] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:47:45] Admin ID: 1 | Ação: Banir Utilizador | Detalhes: ID: 7 | IP: ::1
+[2026-03-15 20:47:45] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:47:51] Admin ID: 1 | Ação: Desbanir Utilizador | Detalhes: ID: 7 | IP: ::1
+[2026-03-15 20:47:51] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:49:02] Admin ID: 1 | Ação: Desbanir Utilizador | Detalhes: ID: 7 | IP: ::1
+[2026-03-15 20:49:02] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:50:42] Admin ID: 1 | Ação: Desbanir Utilizador | Detalhes: ID: 7 | IP: ::1
+[2026-03-15 20:50:42] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:52:45] Admin ID: 1 | Ação: Desbanir Utilizador | Detalhes: ID: 7 | IP: ::1
+[2026-03-15 20:52:45] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:53:56] Admin ID: 1 | Ação: Desbanir Utilizador | Detalhes: ID: 7 | IP: ::1
+[2026-03-15 20:53:56] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-15 20:56:00] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-15 20:56:08] Admin ID: 1 | Ação: Aprovar Casa | Detalhes: ID: 10 | IP: ::1
+[2026-03-15 20:56:08] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-15 20:58:08] Admin ID: 1 | Ação: Aprovar Casa | Detalhes: ID: 10 | IP: ::1
+[2026-03-15 20:58:08] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-18 21:55:15] Admin ID: 1 | Ação: Acesso ao Dashboard | Detalhes: Visualização do painel administrativo | IP: ::1
+[2026-03-18 21:55:18] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-18 21:55:21] Admin ID: 1 | Ação: Eliminar Casa | Detalhes: ID: 6 | IP: ::1
+[2026-03-18 21:55:21] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-18 21:55:24] Admin ID: 1 | Ação: Eliminar Casa | Detalhes: ID: 3 | IP: ::1
+[2026-03-18 21:55:24] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-19 12:38:47] Admin ID: 1 | Ação: Acesso ao Dashboard | Detalhes: Visualização do painel administrativo | IP: ::1
+[2026-03-19 12:38:51] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-19 12:38:54] Admin ID: 1 | Ação: Aprovar Casa | Detalhes: ID: 13 | IP: ::1
+[2026-03-19 12:38:54] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-20 12:46:52] Admin ID: 1 | Ação: Acesso ao Dashboard | Detalhes: Visualização do painel administrativo | IP: ::1
+[2026-03-20 12:48:08] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-20 12:48:20] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-20 12:48:49] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-20 12:49:12] Admin ID: 1 | Ação: Acesso às Configurações | Detalhes:  | IP: ::1
+[2026-03-20 12:49:14] Admin ID: 1 | Ação: Acesso aos Logs | Detalhes:  | IP: ::1
+[2026-03-21 17:05:04] Admin ID: 1 | Ação: Acesso ao Dashboard | Detalhes: Visualização do painel administrativo | IP: ::1
+[2026-03-21 17:05:11] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-21 17:05:29] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-21 17:05:33] Admin ID: 1 | Ação: Acesso às Configurações | Detalhes:  | IP: ::1
+[2026-03-21 17:05:43] Admin ID: 1 | Ação: Acesso aos Logs | Detalhes:  | IP: ::1
+[2026-03-21 17:05:50] Admin ID: 1 | Ação: Acesso ao Dashboard | Detalhes: Visualização do painel administrativo | IP: ::1
+[2026-03-21 17:50:18] Admin ID: 1 | Ação: Acesso ao Dashboard | Detalhes: Visualização do painel administrativo | IP: 127.0.0.1
+[2026-03-21 17:50:25] Admin ID: 1 | Ação: Acesso às Verificações Pendentes | Detalhes:  | IP: 127.0.0.1
+[2026-03-21 17:50:43] Admin ID: 1 | Ação: Aprovar Casa | Detalhes: ID: 1 | IP: 127.0.0.1
+[2026-03-21 17:50:43] Admin ID: 1 | Ação: Acesso às Verificações Pendentes | Detalhes:  | IP: 127.0.0.1
+[2026-03-23 12:26:58] Admin ID: 1 | Ação: Acesso ao Dashboard | Detalhes: Visualização do painel administrativo | IP: ::1
+[2026-03-23 12:27:05] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-23 12:32:05] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-23 12:32:08] Admin ID: 1 | Ação: Aprovar Casa | Detalhes: ID: 2 | IP: ::1
+[2026-03-23 12:32:08] Admin ID: 1 | Ação: Acesso à Gestão de Casas | Detalhes:  | IP: ::1
+[2026-03-23 13:05:49] Admin ID: 1 | Ação: Acesso ao Dashboard | Detalhes: Visualização do painel administrativo | IP: ::1
+[2026-03-23 13:05:54] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-23 13:05:59] Admin ID: 1 | Ação: Eliminar Utilizador | Detalhes: ID: 3 | IP: ::1
+[2026-03-23 13:05:59] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1
+[2026-03-23 13:06:01] Admin ID: 1 | Ação: Eliminar Utilizador | Detalhes: ID: 2 | IP: ::1
+[2026-03-23 13:06:01] Admin ID: 1 | Ação: Acesso à Gestão de Utilizadores | Detalhes:  | IP: ::1

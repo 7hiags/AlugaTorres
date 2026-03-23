@@ -1,0 +1,380 @@
+<?php
+require_once __DIR__ . '/../backend/check_admin.php';
+
+// Processar ações
+$mensagem = '';
+$tipo_mensagem = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['acao'])) {
+        $casa_id = intval($_POST['casa_id'] ?? 0);
+
+        switch ($_POST['acao']) {
+            case 'eliminar':
+                $stmt = $conn->prepare("DELETE FROM casas WHERE id = ?");
+                $stmt->bind_param("i", $casa_id);
+                if ($stmt->execute()) {
+                    logAdminActivity('Eliminar Casa', 'ID: ' . $casa_id);
+                    $mensagem = 'Casa eliminada com sucesso!';
+                    $tipo_mensagem = 'success';
+                } else {
+                    $mensagem = 'Erro ao eliminar casa.';
+                    $tipo_mensagem = 'danger';
+                }
+                break;
+
+            case 'aprovar':
+                $stmt = $conn->prepare("UPDATE casas SET aprovado = 1 WHERE id = ?");
+                $stmt->bind_param("i", $casa_id);
+                if ($stmt->execute()) {
+                    logAdminActivity('Aprovar Casa', 'ID: ' . $casa_id);
+                    $mensagem = 'Casa aprovada com sucesso!';
+                    $tipo_mensagem = 'success';
+                }
+                break;
+
+            case 'rejeitar':
+                $motivo = $_POST['motivo'] ?? '';
+                $stmt = $conn->prepare("UPDATE casas SET aprovado = 2, motivo_rejeicao = ? WHERE id = ?");
+                $stmt->bind_param("si", $motivo, $casa_id);
+                if ($stmt->execute()) {
+                    logAdminActivity('Rejeitar Casa', 'ID: ' . $casa_id);
+                    $mensagem = 'Casa rejeitada.';
+                    $tipo_mensagem = 'warning';
+                }
+                break;
+        }
+    }
+}
+
+// Filtros
+$filtro_estado = $_GET['estado'] ?? '';
+$filtro_aprovacao = $_GET['aprovacao'] ?? '';
+$filtro_destaque = $_GET['destaque'] ?? '';
+$search = $_GET['search'] ?? '';
+
+// Construir query
+$where = [];
+$params = [];
+$types = '';
+
+if ($filtro_estado === 'disponivel') {
+    $where[] = "disponivel = 1";
+} elseif ($filtro_estado === 'indisponivel') {
+    $where[] = "disponivel = 0";
+}
+
+if ($filtro_aprovacao === 'pendente') {
+    $where[] = "(aprovado = 0 OR aprovado IS NULL)";
+} elseif ($filtro_aprovacao === 'aprovada') {
+    $where[] = "aprovado = 1";
+} elseif ($filtro_aprovacao === 'rejeitada') {
+    $where[] = "aprovado = 2";
+}
+
+if ($filtro_destaque === 'sim') {
+    $where[] = "destaque = 1";
+}
+
+if ($search) {
+    $where[] = "(titulo LIKE ? OR morada LIKE ? OR descricao LIKE ?)";
+    $search_like = "%$search%";
+    $params[] = $search_like;
+    $params[] = $search_like;
+    $params[] = $search_like;
+    $types .= 'sss';
+}
+
+$where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+
+// Paginação
+$por_pagina = 15;
+$pagina = max(1, intval($_GET['pagina'] ?? 1));
+$offset = ($pagina - 1) * $por_pagina;
+
+// Contar total
+$count_sql = "SELECT COUNT(*) as total FROM casas $where_clause";
+$stmt = $conn->prepare($count_sql);
+if (!empty($params)) {
+    $stmt->bind_param($types, ...$params);
+}
+$stmt->execute();
+$total_result = $stmt->get_result()->fetch_assoc();
+$total_casas = $total_result['total'];
+$total_paginas = ceil($total_casas / $por_pagina);
+
+// Buscar casas - CORRIGIDO: data_criacao em vez de created_at
+$sql = "SELECT c.*, u.utilizador as proprietario_nome, u.email as proprietario_email 
+        FROM casas c 
+        LEFT JOIN utilizadores u ON c.proprietario_id = u.id 
+        $where_clause 
+        ORDER BY c.data_criacao DESC 
+        LIMIT ? OFFSET ?";
+$stmt = $conn->prepare($sql);
+
+// Adicionar parâmetros de paginação
+$params[] = $por_pagina;
+$params[] = $offset;
+$types .= 'ii';
+
+$stmt->bind_param($types, ...$params);
+$stmt->execute();
+$casas = $stmt->get_result();
+
+// Estatísticas
+$stats = [];
+$result = $conn->query("SELECT COUNT(*) as total FROM casas");
+$stats['total'] = $result->fetch_assoc()['total'];
+
+$result = $conn->query("SELECT COUNT(*) as total FROM casas WHERE disponivel = 1");
+$stats['disponiveis'] = $result->fetch_assoc()['total'];
+
+$result = $conn->query("SELECT COUNT(*) as total FROM casas WHERE destaque = 1");
+$stats['destaque'] = $result->fetch_assoc()['total'];
+
+$result = $conn->query("SELECT COUNT(*) as total FROM casas WHERE aprovado = 0 OR aprovado IS NULL");
+$stats['pendentes'] = $result->fetch_assoc()['total'];
+
+$result = $conn->query("SELECT COUNT(*) as total FROM casas WHERE aprovado = 2");
+$stats['rejeitadas'] = $result->fetch_assoc()['total'];
+
+logAdminActivity('Acesso à Gestão de Casas');
+?>
+
+<?php
+$pageTitle = 'AlugaTorres | Gerir Casas';
+$extraHead = '<link rel="stylesheet" href="' . BASE_URL . 'assets/style/admin_style.css">';
+require_once __DIR__ . '/../root/head.php';
+include '../root/header.php';
+include '../root/sidebar.php';
+?>
+
+<body>
+    <main class="admin-main">
+        <div class="page-header">
+            <h2><i class="fas fa-home"></i> Gerir Casas</h2>
+            <div class="page-actions">
+                <a href="index.php" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar</a>
+            </div>
+        </div>
+
+        <?php if ($mensagem): ?>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    <?php
+                    $toastType = $tipo_mensagem === 'success' ? 'success' : ($tipo_mensagem === 'danger' ? 'error' : ($tipo_mensagem === 'warning' ? 'warning' : 'info'));
+                    echo "AlugaTorresNotifications.{$toastType}(" . json_encode($mensagem) . ");";
+                    ?>
+                });
+            </script>
+        <?php endif; ?>
+
+
+        <!-- Estatísticas -->
+        <div class="stats-row">
+            <div class="stat-detail-card">
+                <h4><i class="fas fa-home"></i> Total Casas</h4>
+                <p class="big-number"><?php echo number_format($stats['total']); ?></p>
+            </div>
+            <div class="stat-detail-card">
+                <h4><i class="fas fa-check-circle"></i> Disponíveis</h4>
+                <p class="big-number"><?php echo number_format($stats['disponiveis']); ?></p>
+            </div>
+            <div class="stat-detail-card">
+                <h4><i class="fas fa-clock"></i> Pendentes</h4>
+                <p class="big-number"><?php echo number_format($stats['pendentes']); ?></p>
+            </div>
+            <div class="stat-detail-card">
+                <h4><i class="fas fa-times-circle"></i> Rejeitadas</h4>
+                <p class="big-number"><?php echo number_format($stats['rejeitadas']); ?></p>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filters-section">
+            <form class="filters-form" method="GET">
+                <div class="form-group search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" name="search" class="form-control" placeholder="Pesquisar casas..." value="<?php echo htmlspecialchars($search); ?>">
+                </div>
+
+                <div class="form-group">
+                    <select name="estado" class="form-control">
+                        <option value="">Todos os estados</option>
+                        <option value="disponivel" <?php echo $filtro_estado === 'disponivel' ? 'selected' : ''; ?>>Disponíveis</option>
+                        <option value="indisponivel" <?php echo $filtro_estado === 'indisponivel' ? 'selected' : ''; ?>>Indisponíveis</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <select name="aprovacao" class="form-control">
+                        <option value="">Todas as aprovações</option>
+                        <option value="pendente" <?php echo $filtro_aprovacao === 'pendente' ? 'selected' : ''; ?>>Pendentes</option>
+                        <option value="aprovada" <?php echo $filtro_aprovacao === 'aprovada' ? 'selected' : ''; ?>>Aprovadas</option>
+                        <option value="rejeitada" <?php echo $filtro_aprovacao === 'rejeitada' ? 'selected' : ''; ?>>Rejeitadas</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Filtrar</button>
+                <a href="casas.php" class="btn btn-secondary"><i class="fas fa-times"></i> Limpar</a>
+            </form>
+        </div>
+
+        <!-- Tabela de Casas -->
+        <div class="admin-card">
+            <div class="export-buttons">
+                <button class="export-btn" onclick="exportTableToCSV('casas.csv')">
+                    <i class="fas fa-download"></i> Exportar CSV
+                </button>
+            </div>
+
+            <table class="admin-table" id="casasTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Foto</th>
+                        <th>Título</th>
+                        <th>Proprietário</th>
+                        <th>Localização</th>
+                        <th>Preço/Noite</th>
+                        <th>Estado</th>
+                        <th>Aprovação</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php while ($casa = $casas->fetch_assoc()): ?>
+                        <tr>
+                            <td>#<?php echo $casa['id']; ?></td>
+                            <td>
+                                <?php
+                                $fotos = json_decode($casa['fotos'] ?? '[]', true);
+                                // Corrigir caminho da foto se necessário
+                                $foto_path = $fotos[0] ?? '';
+                                if (!empty($foto_path) && strpos($foto_path, 'assets/') !== 0) {
+                                    $foto_path = 'assets/' . ltrim($foto_path, '/');
+                                }
+                                $primeira_foto = !empty($fotos[0]) ? BASE_URL . $foto_path : BASE_URL . 'assets/style/img/casa_default.jpg';
+                                ?>
+                                <img src="<?php echo htmlspecialchars($primeira_foto); ?>" alt="" style="width: 60px; height: 40px; object-fit: cover; border-radius: 5px;">
+                            </td>
+                            <td><?php echo htmlspecialchars($casa['titulo']); ?></td>
+                            <td>
+                                <?php echo htmlspecialchars($casa['proprietario_nome']); ?><br>
+                                <small><?php echo htmlspecialchars($casa['proprietario_email']); ?></small>
+                            </td>
+                            <td><?php echo htmlspecialchars($casa['morada']); ?></td>
+                            <td>€<?php echo number_format($casa['preco_noite'], 2, ',', '.'); ?></td>
+                            <td>
+                                <?php if ($casa['disponivel']): ?>
+                                    <span class="badge badge-confirmada">Disponível</span>
+                                <?php else: ?>
+                                    <span class="badge badge-cancelada">Indisponível</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if (!isset($casa['aprovado']) || $casa['aprovado'] == 0): ?>
+                                    <span class="badge badge-pendente">Pendente</span>
+                                <?php elseif ($casa['aprovado'] == 1): ?>
+                                    <span class="badge badge-confirmada">Aprovada</span>
+                                <?php else: ?>
+                                    <span class="badge badge-cancelada">Rejeitada</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                    <?php if (!isset($casa['aprovado']) || $casa['aprovado'] == 0): ?>
+                                        <form method="POST" style="display: inline;" onsubmit="return confirm('Aprovar esta casa?');">
+                                            <input type="hidden" name="acao" value="aprovar">
+                                            <input type="hidden" name="casa_id" value="<?php echo $casa['id']; ?>">
+                                            <button type="submit" class="btn btn-sm btn-success">
+                                                <i class="fas fa-check"></i> Aprovar
+                                            </button>
+                                        </form>
+
+                                        <button onclick="mostrarRejeicao(<?php echo $casa['id']; ?>); return false;" class="btn btn-sm btn-warning">
+                                            <i class="fas fa-times"></i> Rejeitar
+                                        </button>
+                                    <?php endif; ?>
+
+                                    <form method="POST" style="display: inline;" onsubmit="return confirm('ELIMINAR permanentemente?');">
+                                        <input type="hidden" name="acao" value="eliminar">
+                                        <input type="hidden" name="casa_id" value="<?php echo $casa['id']; ?>">
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-trash"></i> Eliminar
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+
+                        </tr>
+                    <?php endwhile; ?>
+                </tbody>
+            </table>
+
+            <?php if ($total_casas === 0): ?>
+                <div class="empty-state">
+                    <i class="fas fa-home"></i>
+                    <h4>Nenhuma casa encontrada</h4>
+                    <p>Tente ajustar os filtros de pesquisa</p>
+                </div>
+            <?php endif; ?>
+
+            <!-- Paginação -->
+            <?php if ($total_paginas > 1): ?>
+                <div class="pagination">
+                    <?php if ($pagina > 1): ?>
+                        <a href="?pagina=<?php echo $pagina - 1; ?>&estado=<?php echo $filtro_estado; ?>&aprovacao=<?php echo $filtro_aprovacao; ?>&destaque=<?php echo $filtro_destaque; ?>&search=<?php echo urlencode($search); ?>">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    <?php endif; ?>
+
+                    <?php for ($i = max(1, $pagina - 2); $i <= min($total_paginas, $pagina + 2); $i++): ?>
+                        <?php if ($i == $pagina): ?>
+                            <span class="current"><?php echo $i; ?></span>
+                        <?php else: ?>
+                            <a href="?pagina=<?php echo $i; ?>&estado=<?php echo $filtro_estado; ?>&aprovacao=<?php echo $filtro_aprovacao; ?>&destaque=<?php echo $filtro_destaque; ?>&search=<?php echo urlencode($search); ?>"><?php echo $i; ?></a>
+                        <?php endif; ?>
+                    <?php endfor; ?>
+
+                    <?php if ($pagina < $total_paginas): ?>
+                        <a href="?pagina=<?php echo $pagina + 1; ?>&estado=<?php echo $filtro_estado; ?>&aprovacao=<?php echo $filtro_aprovacao; ?>&destaque=<?php echo $filtro_destaque; ?>&search=<?php echo urlencode($search); ?>">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    </main>
+
+    <!-- Modal de Rejeição - CSS classes (usa script.js globals) -->
+    <div class="modal-overlay" id="modalRejeicao">
+        <div class="modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-times-circle" style="margin-right: 10px;"></i> Rejeitar Casa</h3>
+                <button class="modal-close" onclick="fecharModal()" type="button">&times;</button>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="acao" value="rejeitar">
+                <input type="hidden" name="casa_id" id="rejeitarCasaId">
+                <div class="form-group">
+                    <label>Motivo da rejeição <span style="color: red;">*</span>:</label>
+                    <textarea name="motivo" class="form-control" rows="4" required placeholder="Explique o motivo da rejeição..."></textarea>
+                </div>
+                <div style="display: flex; gap: 15px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Rejeitar Casa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <?php include '../root/footer.php'; ?>
+
+
+
+
+
+</body>
+
+</html>
